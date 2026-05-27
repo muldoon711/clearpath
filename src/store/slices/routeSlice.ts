@@ -1,0 +1,115 @@
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import type { Route, RouteStatus, NavigationState, LatLng, TravelMode } from '../../types';
+import ValhallaRouter from '../../services/ValhallaRouter';
+import CameraDatabase from '../../services/CameraDatabase';
+import type { RootState } from '../index';
+
+interface RouteSliceState {
+  current: Route | null;
+  status: RouteStatus;
+  error: string | null;
+  destination: LatLng | null;
+  navigation: NavigationState | null;
+}
+
+const initialState: RouteSliceState = {
+  current: null,
+  status: 'idle',
+  error: null,
+  destination: null,
+  navigation: null,
+};
+
+export const calculateRoute = createAsyncThunk<
+  Route,
+  { origin: LatLng; destination: LatLng; travelMode: TravelMode },
+  { state: RootState; rejectValue: string }
+>('route/calculate', async ({ origin, destination, travelMode }, { getState, rejectWithValue }) => {
+  const state = getState();
+  const { avoidance } = state.settings;
+
+  const cameras = await CameraDatabase.getInstance().getCamerasInBounds({
+    minLat: Math.min(origin.latitude, destination.latitude) - 0.1,
+    minLng: Math.min(origin.longitude, destination.longitude) - 0.1,
+    maxLat: Math.max(origin.latitude, destination.latitude) + 0.1,
+    maxLng: Math.max(origin.longitude, destination.longitude) + 0.1,
+  });
+
+  const vendorsToAvoid = new Set<string>();
+  if (avoidance.avoidFlockSafety) vendorsToAvoid.add('flock_safety');
+  if (avoidance.avoidVigilant) vendorsToAvoid.add('vigilant');
+  if (avoidance.avoidMotorola) vendorsToAvoid.add('motorola');
+  if (avoidance.avoidUnknown) vendorsToAvoid.add('unknown');
+
+  const avoidCameras = cameras.filter(
+    c => vendorsToAvoid.has(c.vendor) && c.status === 'active',
+  );
+
+  const router = ValhallaRouter.getInstance();
+  const route = await router.route({
+    origin,
+    destination,
+    travelMode,
+    avoidCameras,
+    avoidRadiusMeters: avoidance.avoidRadiusMeters,
+    endpoint: state.settings.valhallaEndpoint,
+  });
+
+  if (!route) {
+    return rejectWithValue('No route found');
+  }
+  return route;
+});
+
+const routeSlice = createSlice({
+  name: 'route',
+  initialState,
+  reducers: {
+    clearRoute(state) {
+      state.current = null;
+      state.status = 'idle';
+      state.error = null;
+      state.destination = null;
+      state.navigation = null;
+    },
+    setDestination(state, action: PayloadAction<LatLng | null>) {
+      state.destination = action.payload;
+    },
+    updateNavigation(state, action: PayloadAction<NavigationState>) {
+      state.navigation = action.payload;
+      if (state.current) {
+        state.status = 'active';
+      }
+    },
+    setArrived(state) {
+      state.status = 'arrived';
+      state.navigation = null;
+    },
+    setOffRoute(state, action: PayloadAction<boolean>) {
+      if (state.navigation) {
+        state.navigation.isOffRoute = action.payload;
+      }
+    },
+  },
+  extraReducers: builder => {
+    builder
+      .addCase(calculateRoute.pending, state => {
+        state.status = 'calculating';
+        state.error = null;
+      })
+      .addCase(calculateRoute.fulfilled, (state, action) => {
+        state.current = action.payload;
+        state.status = 'active';
+        state.error = null;
+      })
+      .addCase(calculateRoute.rejected, (state, action) => {
+        state.status = 'error';
+        state.error = action.payload ?? 'Route calculation failed';
+      });
+  },
+});
+
+export const { clearRoute, setDestination, updateNavigation, setArrived, setOffRoute } =
+  routeSlice.actions;
+
+export default routeSlice.reducer;

@@ -1,0 +1,49 @@
+name: Privacy Audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Monday at 08:00 UTC to catch dependency-introduced telemetry
+    - cron: "0 8 * * 1"
+
+jobs:
+  audit:
+    name: Static Privacy Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run privacy audit script
+        run: node scripts/privacy-audit.js
+
+      - name: Check for bundled analytics dependencies
+        run: |
+          # Fail if any known analytics packages appear in package.json or lock file
+          BANNED_PKGS="@segment/analytics-react-native react-native-firebase firebase mixpanel-react-native @amplitude/analytics-react-native @datadog/mobile-react-native"
+          for pkg in $BANNED_PKGS; do
+            if grep -q "\"$pkg\"" package.json 2>/dev/null; then
+              echo "VIOLATION: Banned package '$pkg' found in package.json"
+              exit 1
+            fi
+            if [ -f package-lock.json ] && grep -q "\"$pkg\"" package-lock.json; then
+              echo "VIOLATION: Banned package '$pkg' found in package-lock.json"
+              exit 1
+            fi
+          done
+          echo "No banned analytics packages detected."
+
+      - name: Verify MapLibre telemetry is disabled
+        run: |
+          if ! grep -r "setTelemetryEnabled(false)" src/ App.tsx 2>/dev/null | grep -q "false"; then
+            echo "WARNING: MapLibre.setTelemetryEnabled(false) not found — telemetry may be on."
+            exit 1
+          fi
+          echo "MapLibre telemetry is disabled."

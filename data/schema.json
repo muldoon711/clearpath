@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/muldoon711/clearpath/blob/main/data/schema.json",
+  "title": "ClearPath Camera Data",
+  "description": "GeoJSON FeatureCollection of community-sourced ALPR camera locations",
+  "type": "object",
+  "required": ["type", "generated_at", "features"],
+  "properties": {
+    "type": {
+      "const": "FeatureCollection"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of when this dataset was generated"
+    },
+    "features": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CameraFeature" }
+    }
+  },
+  "$defs": {
+    "CameraFeature": {
+      "type": "object",
+      "required": ["type", "geometry", "properties"],
+      "properties": {
+        "type": { "const": "Feature" },
+        "geometry": {
+          "type": "object",
+          "required": ["type", "coordinates"],
+          "properties": {
+            "type": { "const": "Point" },
+            "coordinates": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180,
+                  "description": "Longitude"
+                },
+                {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90,
+                  "description": "Latitude"
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        "properties": { "$ref": "#/$defs/CameraProperties" }
+      }
+    },
+    "CameraProperties": {
+      "type": "object",
+      "required": ["id", "vendor", "status", "last_verified"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique camera identifier (UUID or source-prefixed string)"
+        },
+        "vendor": {
+          "type": "string",
+          "enum": ["flock_safety", "vigilant", "motorola", "unknown"],
+          "description": "ALPR camera manufacturer / network"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive", "unverified"],
+          "description": "Community-verified operational status"
+        },
+        "last_verified": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 UTC timestamp of last community verification"
+        },
+        "avoid_radius_meters": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 500,
+          "default": 50,
+          "description": "Suggested buffer radius for route avoidance"
+        },
+        "address": {
+          "type": "string",
+          "description": "Human-readable street address (optional)"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Freeform community notes (optional)"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
