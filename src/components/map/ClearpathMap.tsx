@@ -1,6 +1,6 @@
 import React, { useRef, useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import MapLibreGL from '@maplibre/maplibre-react-native';
+import MapLibreGL, { type MapViewRef, type CameraRef } from '@maplibre/maplibre-react-native';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { updateViewport, setIsFollowingUser } from '../../store/slices/mapSlice';
 import { loadVisibleCameras } from '../../store/slices/cameraSlice';
@@ -22,13 +22,14 @@ interface ClearpathMapProps {
 
 export default function ClearpathMap({ onMapReady }: ClearpathMapProps) {
   const dispatch = useAppDispatch();
-  const mapRef = useRef<MapLibreGL.MapView>(null);
-  const cameraRef = useRef<MapLibreGL.Camera>(null);
+  const mapRef = useRef<MapViewRef>(null);
+  const cameraRef = useRef<CameraRef>(null);
 
-  const { center, zoom, bearing, pitch, isFollowingUser, mapStyle, showCameras } =
-    useAppSelector(state => state.map);
-  const { current: route } = useAppSelector(state => state.route);
-  const { visibleCameras } = useAppSelector(state => state.cameras);
+  const { center, zoom, bearing, pitch, isFollowingUser, mapStyle, showCameras } = useAppSelector(
+    (state) => state.map,
+  );
+  const { current: route } = useAppSelector((state) => state.route);
+  const { visibleCameras } = useAppSelector((state) => state.cameras);
 
   // Keep camera centered on user when following
   useEffect(() => {
@@ -36,7 +37,7 @@ export default function ClearpathMap({ onMapReady }: ClearpathMapProps) {
       cameraRef.current.setCamera({
         centerCoordinate: [center.longitude, center.latitude],
         zoomLevel: zoom,
-        bearing,
+        heading: bearing,
         pitch,
         animationMode: 'flyTo',
         animationDuration: 300,
@@ -44,15 +45,36 @@ export default function ClearpathMap({ onMapReady }: ClearpathMapProps) {
     }
   }, [center, zoom, bearing, pitch, isFollowingUser]);
 
+  type RegionFeature = {
+    properties: {
+      visibleBounds: number[][];
+      zoomLevel: number;
+      heading: number;
+      pitch: number;
+      isUserInteraction: boolean;
+    };
+  };
+
   const handleRegionDidChange = useCallback(
-    async (feature: { properties: { visibleBounds: [[number, number], [number, number]]; zoomLevel: number; heading: number; pitch: number; isUserInteraction: boolean } }) => {
-      const { visibleBounds, zoomLevel, heading, pitch: newPitch, isUserInteraction } = feature.properties;
+    async (feature: RegionFeature) => {
+      const {
+        visibleBounds,
+        zoomLevel,
+        heading,
+        pitch: newPitch,
+        isUserInteraction,
+      } = feature.properties;
 
       if (isUserInteraction) {
         dispatch(setIsFollowingUser(false));
       }
 
-      const [[maxLng, maxLat], [minLng, minLat]] = visibleBounds;
+      const ne = visibleBounds[0] ?? [];
+      const sw = visibleBounds[1] ?? [];
+      const maxLng = ne[0] ?? 0;
+      const maxLat = ne[1] ?? 0;
+      const minLng = sw[0] ?? 0;
+      const minLat = sw[1] ?? 0;
       const bounds: BoundingBox = { minLat, minLng, maxLat, maxLng };
 
       if (zoomLevel >= 12 && showCameras) {
@@ -86,7 +108,7 @@ export default function ClearpathMap({ onMapReady }: ClearpathMapProps) {
       <MapLibreGL.MapView
         ref={mapRef}
         style={styles.map}
-        styleURL={STYLE_URLS[mapStyle] ?? STYLE_URLS.streets}
+        mapStyle={STYLE_URLS[mapStyle] ?? STYLE_URLS.streets}
         compassEnabled
         compassViewPosition={3}
         logoEnabled={false}

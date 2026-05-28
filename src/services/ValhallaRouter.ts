@@ -52,7 +52,7 @@ export default class ValhallaRouter {
     };
 
     if (avoidCameras.length > 0) {
-      body.avoid_locations = avoidCameras.map(c => ({
+      body.avoid_locations = avoidCameras.map((c) => ({
         lat: c.location.latitude,
         lon: c.location.longitude,
         radius: avoidRadiusMeters,
@@ -68,7 +68,6 @@ export default class ValhallaRouter {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
-        cache: 'no-store',
       });
     } catch (err) {
       console.warn('[ValhallaRouter] Network error:', err);
@@ -99,7 +98,7 @@ export default class ValhallaRouter {
   ): Route {
     const leg = data.trip.legs[0];
     const geometry = decodePolyline(leg.shape, 6);
-    const steps: RouteStep[] = leg.maneuvers.map(m => this.maneuverToStep(m, geometry));
+    const steps: RouteStep[] = leg.maneuvers.map((m) => this.maneuverToStep(m, geometry));
 
     return {
       id: `route_${Date.now()}`,
@@ -111,15 +110,14 @@ export default class ValhallaRouter {
       totalDuration: leg.summary.time,
       cameraCount: avoidedCameras.length,
       travelMode,
-      avoidedCameraIds: avoidedCameras.map(c => c.id),
+      avoidedCameraIds: avoidedCameras.map((c) => c.id),
     };
   }
 
   private maneuverToStep(maneuver: ValhallaManeuver, geometry: [number, number][]): RouteStep {
     const [lng, lat] = geometry[maneuver.begin_shape_index] ?? [0, 0];
     return {
-      instruction:
-        maneuver.verbal_pre_transition_instruction ?? maneuver.instruction,
+      instruction: maneuver.verbal_pre_transition_instruction ?? maneuver.instruction,
       distance: maneuver.length * 1000, // km → m
       duration: maneuver.time,
       maneuverType: MANEUVER_TYPES[maneuver.type] ?? 'continue',

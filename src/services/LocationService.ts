@@ -1,6 +1,6 @@
 import { Platform, PermissionsAndroid } from 'react-native';
 import type { LatLng, NavigationState } from '../types';
-import { haversineDistance, bearing } from '../utils/geo';
+import { haversineDistance } from '../utils/geo';
 
 type LocationCallback = (location: LatLng, heading: number, speed: number) => void;
 type ErrorCallback = (error: string) => void;
@@ -61,7 +61,14 @@ export default class LocationService {
     const Geolocation = require('@react-native-community/geolocation').default;
 
     Geolocation.watchPosition(
-      (pos: { coords: { latitude: number; longitude: number; speed: number | null; heading: number | null } }) => {
+      (pos: {
+        coords: {
+          latitude: number;
+          longitude: number;
+          speed: number | null;
+          heading: number | null;
+        };
+      }) => {
         const current: LatLng = {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
@@ -69,10 +76,10 @@ export default class LocationService {
         const speed = pos.coords.speed ?? 0;
         const hdg = pos.coords.heading ?? 0;
         this.lastPosition = current;
-        this.callbacks.forEach(cb => cb(current, hdg, speed));
+        this.callbacks.forEach((cb) => cb(current, hdg, speed));
       },
       (err: { message: string }) => {
-        this.errorCallbacks.forEach(cb => cb(err.message));
+        this.errorCallbacks.forEach((cb) => cb(err.message));
       },
       {
         enableHighAccuracy: true,

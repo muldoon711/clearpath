@@ -11,9 +11,6 @@ import MapScreen from './src/screens/MapScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 
-// Disable MapLibre telemetry — all analytics are off
-MapLibreGL.setTelemetryEnabled(false);
-
 const Tab = createBottomTabNavigator();
 
 function TabIcon({ icon }: { icon: string }) {

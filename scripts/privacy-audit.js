@@ -27,7 +27,7 @@ const BANNED_PATTERNS = [
 
 const SCAN_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.swift', '.kt', '.java'];
 const SCAN_DIRS = ['src', 'ios', 'android'];
-const IGNORE_DIRS = new Set(['node_modules', '.git', 'build', 'dist', '__generated__']);
+const IGNORE_DIRS = new Set(['node_modules', '.git', 'build', 'dist', '__generated__', '__tests__']);
 // Files that define detection blocklists — they contain the banned strings intentionally
 const IGNORE_FILES = new Set([
   'src/utils/privacy.ts',

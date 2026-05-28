@@ -70,12 +70,8 @@ export default class CameraDatabase {
         notes TEXT
       )
     `);
-    await db.execute(
-      `CREATE INDEX IF NOT EXISTS idx_cameras_lat ON cameras(latitude)`,
-    );
-    await db.execute(
-      `CREATE INDEX IF NOT EXISTS idx_cameras_lng ON cameras(longitude)`,
-    );
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_cameras_lat ON cameras(latitude)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_cameras_lng ON cameras(longitude)`);
     await db.execute(`
       CREATE TABLE IF NOT EXISTS metadata (
         key TEXT PRIMARY KEY,
@@ -101,7 +97,7 @@ export default class CameraDatabase {
     const db = this.sqliteDb!;
     let count = 0;
 
-    await db.transaction(async tx => {
+    await db.transaction(async (tx) => {
       for (const feature of data.features) {
         const r = featureToRecord(feature);
         await tx.execute(
@@ -109,8 +105,17 @@ export default class CameraDatabase {
              (id, latitude, longitude, vendor, status, last_verified,
               avoid_radius_meters, address, notes)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [r.id, r.latitude, r.longitude, r.vendor, r.status,
-           r.lastVerified, r.avoidRadiusMeters, r.address, r.notes],
+          [
+            r.id,
+            r.latitude,
+            r.longitude,
+            r.vendor,
+            r.status,
+            r.lastVerified,
+            r.avoidRadiusMeters,
+            r.address,
+            r.notes,
+          ],
         );
         count++;
       }
@@ -126,7 +131,7 @@ export default class CameraDatabase {
       return this.fallback
         .getAll()
         .filter(
-          r =>
+          (r) =>
             r.latitude >= bounds.minLat &&
             r.latitude <= bounds.maxLat &&
             r.longitude >= bounds.minLng &&
@@ -153,10 +158,7 @@ export default class CameraDatabase {
       return r ? recordToCamera(r) : null;
     }
 
-    const result = await this.sqliteDb!.execute(
-      `SELECT * FROM cameras WHERE id = ? LIMIT 1`,
-      [id],
-    );
+    const result = await this.sqliteDb!.execute(`SELECT * FROM cameras WHERE id = ? LIMIT 1`, [id]);
     const rows = result.rows._array as CameraRecord[];
     return rows.length > 0 ? recordToCamera(rows[0]) : null;
   }
@@ -166,22 +168,19 @@ export default class CameraDatabase {
 
     if (this.fallback) return this.fallback.count();
 
-    const result = await this.sqliteDb!.execute(
-      `SELECT COUNT(*) as cnt FROM cameras`,
-    );
-    return ((result.rows._array[0] as { cnt: number }).cnt) ?? 0;
+    const result = await this.sqliteDb!.execute(`SELECT COUNT(*) as cnt FROM cameras`);
+    return (result.rows._array[0] as { cnt: number }).cnt ?? 0;
   }
 
   async clearAll(): Promise<void> {
     await this.ensureInitialized();
 
     if (this.fallback) {
-      this.fallback.clear();
+      this.fallback.clearCameras();
       return;
     }
 
     await this.sqliteDb!.execute(`DELETE FROM cameras`);
-    await this.sqliteDb!.execute(`DELETE FROM metadata`);
   }
 
   async getLastSyncTimestamp(): Promise<string | null> {
@@ -252,11 +251,25 @@ class InMemoryStore {
   private cameras = new Map<string, CameraRecord>();
   private metadata = new Map<string, string>();
 
-  upsert(record: CameraRecord): void { this.cameras.set(record.id, record); }
-  get(id: string): CameraRecord | undefined { return this.cameras.get(id); }
-  getAll(): CameraRecord[] { return Array.from(this.cameras.values()); }
-  count(): number { return this.cameras.size; }
-  clear(): void { this.cameras.clear(); this.metadata.clear(); }
-  getMetadata(key: string): string | undefined { return this.metadata.get(key); }
-  setMetadata(key: string, value: string): void { this.metadata.set(key, value); }
+  upsert(record: CameraRecord): void {
+    this.cameras.set(record.id, record);
+  }
+  get(id: string): CameraRecord | undefined {
+    return this.cameras.get(id);
+  }
+  getAll(): CameraRecord[] {
+    return Array.from(this.cameras.values());
+  }
+  count(): number {
+    return this.cameras.size;
+  }
+  clearCameras(): void {
+    this.cameras.clear();
+  }
+  getMetadata(key: string): string | undefined {
+    return this.metadata.get(key);
+  }
+  setMetadata(key: string, value: string): void {
+    this.metadata.set(key, value);
+  }
 }

@@ -28,8 +28,11 @@ function makeCameraFeature(id: string, lat: number, lng: number): DeflockGeoJSON
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const g = globalThis as any;
+
 function mockFetchSuccess(body: unknown, status = 200): jest.SpyInstance {
-  return jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+  return jest.spyOn(g, 'fetch').mockResolvedValueOnce({
     ok: status >= 200 && status < 300,
     status,
     statusText: status === 200 ? 'OK' : 'Error',
@@ -38,7 +41,7 @@ function mockFetchSuccess(body: unknown, status = 200): jest.SpyInstance {
 }
 
 function mockFetchFailure(message: string): jest.SpyInstance {
-  return jest.spyOn(global, 'fetch').mockRejectedValueOnce(new Error(message));
+  return jest.spyOn(g, 'fetch').mockRejectedValueOnce(new Error(message));
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +64,7 @@ async function resetDatabase(): Promise<void> {
   // clearMetadata API). We use internal knowledge that the metadata Map
   // can be reached via the db instance's private field.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (db as any).db.metadata.clear();
+  (db as any).fallback.metadata.clear();
 }
 
 beforeEach(async () => {

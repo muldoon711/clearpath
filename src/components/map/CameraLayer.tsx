@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import MapLibreGL from '@maplibre/maplibre-react-native';
+import MapLibreGL, { type OnPressEvent } from '@maplibre/maplibre-react-native';
 import type { ALPRCamera } from '../../types';
 
 interface CameraLayerProps {
@@ -18,7 +18,7 @@ export default function CameraLayer({ cameras, onCameraPress }: CameraLayerProps
   const geojson = useMemo(
     () => ({
       type: 'FeatureCollection' as const,
-      features: cameras.map(camera => ({
+      features: cameras.map((camera) => ({
         type: 'Feature' as const,
         id: camera.id,
         geometry: {
@@ -36,11 +36,11 @@ export default function CameraLayer({ cameras, onCameraPress }: CameraLayerProps
     [cameras],
   );
 
-  const handlePress = (event: { features: Array<{ properties: { id: string } }> }) => {
+  const handlePress = (event: OnPressEvent) => {
     if (!onCameraPress) return;
     const feature = event.features[0];
-    if (!feature) return;
-    const camera = cameras.find(c => c.id === feature.properties.id);
+    if (!feature?.properties) return;
+    const camera = cameras.find((c) => c.id === (feature.properties as { id: string }).id);
     if (camera) onCameraPress(camera);
   };
 

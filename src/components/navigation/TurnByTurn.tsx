@@ -1,11 +1,5 @@
 import React, { useCallback } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  AccessibilityInfo,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { clearRoute } from '../../store/slices/routeSlice';
 import { formatDistance, formatDuration } from '../../utils/geo';
@@ -33,8 +27,8 @@ const MANEUVER_ARROWS: Record<string, string> = {
 
 export default function TurnByTurn() {
   const dispatch = useAppDispatch();
-  const { current: route, navigation, status } = useAppSelector(state => state.route);
-  const { units } = useAppSelector(state => state.settings);
+  const { current: route, navigation, status } = useAppSelector((state) => state.route);
+  const { units } = useAppSelector((state) => state.settings);
 
   const handleClose = useCallback(() => {
     dispatch(clearRoute());
@@ -42,9 +36,7 @@ export default function TurnByTurn() {
 
   if (!route || status === 'idle' || status === 'error') return null;
 
-  const currentStep = navigation
-    ? route.steps[navigation.currentStepIndex]
-    : route.steps[0];
+  const currentStep = navigation ? route.steps[navigation.currentStepIndex] : route.steps[0];
 
   const nextStep =
     navigation && navigation.currentStepIndex + 1 < route.steps.length
@@ -93,15 +85,25 @@ export default function TurnByTurn() {
       <View style={styles.summaryRow}>
         <Text style={styles.summaryText}>
           {navigation
-            ? `${formatDuration(navigation.remainingDuration)} · ${formatDistance(navigation.remainingDistance, units)}`
-            : `${formatDuration(route.totalDuration)} · ${formatDistance(route.totalDistance, units)}`}
+            ? `${formatDuration(navigation.remainingDuration)} · ${formatDistance(
+                navigation.remainingDistance,
+                units,
+              )}`
+            : `${formatDuration(route.totalDuration)} · ${formatDistance(
+                route.totalDistance,
+                units,
+              )}`}
         </Text>
         {route.cameraCount > 0 && (
           <Text style={styles.cameraSummary}>
             {route.cameraCount} camera{route.cameraCount !== 1 ? 's' : ''} avoided
           </Text>
         )}
-        <TouchableOpacity onPress={handleClose} accessibilityLabel="Stop navigation" style={styles.closeBtn}>
+        <TouchableOpacity
+          onPress={handleClose}
+          accessibilityLabel="Stop navigation"
+          style={styles.closeBtn}
+        >
           <Text style={styles.closeText}>✕</Text>
         </TouchableOpacity>
       </View>

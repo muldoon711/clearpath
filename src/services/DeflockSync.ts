@@ -36,7 +36,6 @@ export default class DeflockSync {
       const response = await fetch(endpoint, {
         method: 'GET',
         headers: privacyFetchHeaders(),
-        cache: 'no-store',
       });
 
       if (!response.ok) {
@@ -72,10 +71,7 @@ export default class DeflockSync {
   private validateGeoJSON(data: unknown): data is DeflockGeoJSON {
     if (!data || typeof data !== 'object') return false;
     const obj = data as Record<string, unknown>;
-    return (
-      obj.type === 'FeatureCollection' &&
-      Array.isArray(obj.features)
-    );
+    return obj.type === 'FeatureCollection' && Array.isArray(obj.features);
   }
 
   /** Check whether enough time has passed since the last sync */

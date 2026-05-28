@@ -1,12 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-} from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../store';
 import { calculateRoute, setDestination } from '../store/slices/routeSlice';
@@ -14,15 +7,10 @@ import SearchBar from '../components/search/SearchBar';
 import LocationService from '../services/LocationService';
 import type { SearchResult } from '../types';
 
-const QUICK_DESTINATIONS = [
-  { label: 'Home', icon: '🏠' },
-  { label: 'Work', icon: '💼' },
-];
-
 export default function SearchScreen() {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
-  const { travelMode } = useAppSelector(s => s.settings);
+  const { travelMode } = useAppSelector((s) => s.settings);
   const [recentSearches] = useState<SearchResult[]>([]);
 
   const handleSelect = useCallback(
@@ -56,15 +44,13 @@ export default function SearchScreen() {
           <Text style={styles.sectionTitle}>Recent</Text>
           <FlatList
             data={recentSearches}
-            keyExtractor={item => item.id}
+            keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <TouchableOpacity style={styles.recentItem} onPress={() => handleSelect(item)}>
                 <Text style={styles.recentIcon}>🕐</Text>
                 <View style={styles.recentText}>
                   <Text style={styles.recentLabel}>{item.label}</Text>
-                  {item.sublabel && (
-                    <Text style={styles.recentSublabel}>{item.sublabel}</Text>
-                  )}
+                  {item.sublabel && <Text style={styles.recentSublabel}>{item.sublabel}</Text>}
                 </View>
               </TouchableOpacity>
             )}

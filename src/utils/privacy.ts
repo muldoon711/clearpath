@@ -30,7 +30,7 @@ export function redactCoordinates(lat: number, lng: number): { lat: number; lng:
  * Build fetch options that prevent browser/RN from leaking the Referer
  * or any identifying headers to external services.
  */
-export function privacyFetchHeaders(): HeadersInit {
+export function privacyFetchHeaders(): Record<string, string> {
   return {
     Referrer: 'no-referrer',
     'Cache-Control': 'no-store',
@@ -42,7 +42,9 @@ export function validateEndpointUrl(url: string, allowedHosts: string[]): boolea
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
-    return allowedHosts.some(host => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`));
+    return allowedHosts.some(
+      (host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`),
+    );
   } catch {
     return false;
   }
@@ -67,7 +69,7 @@ export function isTelemetryUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     return TELEMETRY_DOMAINS.some(
-      d => parsed.hostname === d || parsed.hostname.endsWith(`.${d}`),
+      (d) => parsed.hostname === d || parsed.hostname.endsWith(`.${d}`),
     );
   } catch {
     return false;
@@ -81,8 +83,8 @@ export async function clearSensitiveCache(AsyncStorage: {
 }): Promise<void> {
   const SENSITIVE_PREFIXES = ['last_location', 'route_history', 'search_history'];
   const allKeys = await AsyncStorage.getAllKeys();
-  const toDelete = (allKeys as string[]).filter(k =>
-    SENSITIVE_PREFIXES.some(prefix => k.startsWith(prefix)),
+  const toDelete = (allKeys as string[]).filter((k) =>
+    SENSITIVE_PREFIXES.some((prefix) => k.startsWith(prefix)),
   );
   if (toDelete.length > 0) {
     await AsyncStorage.multiRemove(toDelete);
@@ -92,15 +94,16 @@ export async function clearSensitiveCache(AsyncStorage: {
 /** Generate a random ephemeral session ID that is never persisted */
 export function ephemeralSessionId(): string {
   const bytes = new Uint8Array(16);
-  // React Native's crypto is available via the global
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(bytes);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const maybeCrypto = (globalThis as any).crypto;
+  if (maybeCrypto && maybeCrypto.getRandomValues) {
+    maybeCrypto.getRandomValues(bytes);
   } else {
     for (let i = 0; i < bytes.length; i++) {
       bytes[i] = Math.floor(Math.random() * 256);
     }
   }
   return Array.from(bytes)
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 }
