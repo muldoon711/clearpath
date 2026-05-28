@@ -51,6 +51,9 @@
     "transform": {
       "^.+\\.(js|jsx|ts|tsx)$": "babel-jest"
     },
-    "testPathPattern": "src/__tests__"
+    "testMatch": ["**/src/__tests__/**/*.test.ts", "**/src/__tests__/**/*.test.tsx"],
+    "transformIgnorePatterns": [
+      "node_modules/(?!(react-native|@react-native|@reduxjs/toolkit|immer|reselect)/)"
+    ]
   }
 }
