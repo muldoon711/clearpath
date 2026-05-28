@@ -57,7 +57,10 @@ export default class AndroidAutoService {
       instruction,
       maneuverType,
       distanceLabel: formatDistance(navState.distanceToNextManeuver, units),
-      remainingLabel: `${formatDuration(navState.remainingDuration)} · ${formatDistance(navState.remainingDistance, units)}`,
+      remainingLabel: `${formatDuration(navState.remainingDuration)} · ${formatDistance(
+        navState.remainingDistance,
+        units,
+      )}`,
       isOffRoute: navState.isOffRoute,
     });
   }

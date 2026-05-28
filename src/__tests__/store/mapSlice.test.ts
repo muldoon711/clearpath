@@ -147,7 +147,12 @@ describe('mapSlice', () => {
     it('updates all specified viewport fields', () => {
       const state = mapReducer(
         initialState,
-        updateViewport({ center: { latitude: 40, longitude: -75 }, zoom: 16, bearing: 45, pitch: 30 }),
+        updateViewport({
+          center: { latitude: 40, longitude: -75 },
+          zoom: 16,
+          bearing: 45,
+          pitch: 30,
+        }),
       );
       expect(state.center).toEqual({ latitude: 40, longitude: -75 });
       expect(state.zoom).toBe(16);

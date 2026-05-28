@@ -41,9 +41,7 @@ export const calculateRoute = createAsyncThunk<
   if (avoidance.avoidMotorola) vendorsToAvoid.add('motorola');
   if (avoidance.avoidUnknown) vendorsToAvoid.add('unknown');
 
-  const avoidCameras = cameras.filter(
-    c => vendorsToAvoid.has(c.vendor) && c.status === 'active',
-  );
+  const avoidCameras = cameras.filter((c) => vendorsToAvoid.has(c.vendor) && c.status === 'active');
 
   const router = ValhallaRouter.getInstance();
   const route = await router.route({
@@ -91,9 +89,9 @@ const routeSlice = createSlice({
       }
     },
   },
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder
-      .addCase(calculateRoute.pending, state => {
+      .addCase(calculateRoute.pending, (state) => {
         state.status = 'calculating';
         state.error = null;
       })

@@ -24,8 +24,8 @@ import type { TravelMode, Units } from '../types';
 
 export default function SettingsScreen() {
   const dispatch = useAppDispatch();
-  const settings = useAppSelector(s => s.settings);
-  const syncState = useAppSelector(s => s.cameras.sync);
+  const settings = useAppSelector((s) => s.settings);
+  const syncState = useAppSelector((s) => s.cameras.sync);
 
   const handleClearTileCache = useCallback(async () => {
     Alert.alert('Clear Tile Cache', 'Delete all downloaded map tiles?', [
@@ -64,14 +64,14 @@ export default function SettingsScreen() {
             options={['auto', 'bicycle', 'pedestrian'] as TravelMode[]}
             labels={['Car', 'Bike', 'Walk']}
             value={settings.travelMode}
-            onChange={v => dispatch(setTravelMode(v as TravelMode))}
+            onChange={(v) => dispatch(setTravelMode(v as TravelMode))}
           />
           <SegmentRow
             label="Units"
             options={['imperial', 'metric'] as Units[]}
             labels={['Imperial', 'Metric']}
             value={settings.units}
-            onChange={v => dispatch(setUnits(v as Units))}
+            onChange={(v) => dispatch(setUnits(v as Units))}
           />
         </Section>
 
@@ -81,18 +81,18 @@ export default function SettingsScreen() {
             label="Flock Safety"
             sublabel="Residential ALPR cameras"
             value={settings.avoidance.avoidFlockSafety}
-            onChange={v => dispatch(updateAvoidance({ avoidFlockSafety: v }))}
+            onChange={(v) => dispatch(updateAvoidance({ avoidFlockSafety: v }))}
           />
           <SwitchRow
             label="Vigilant / Motorola"
             sublabel="Commercial ALPR cameras"
             value={settings.avoidance.avoidVigilant}
-            onChange={v => dispatch(updateAvoidance({ avoidVigilant: v, avoidMotorola: v }))}
+            onChange={(v) => dispatch(updateAvoidance({ avoidVigilant: v, avoidMotorola: v }))}
           />
           <SwitchRow
             label="Unknown vendor"
             value={settings.avoidance.avoidUnknown}
-            onChange={v => dispatch(updateAvoidance({ avoidUnknown: v }))}
+            onChange={(v) => dispatch(updateAvoidance({ avoidUnknown: v }))}
           />
         </Section>
 
@@ -102,13 +102,13 @@ export default function SettingsScreen() {
             label="Local routing only"
             sublabel="Use self-hosted Valhalla — never send location to public servers"
             value={settings.privacy.localRoutingOnly}
-            onChange={v => dispatch(updatePrivacy({ localRoutingOnly: v }))}
+            onChange={(v) => dispatch(updatePrivacy({ localRoutingOnly: v }))}
           />
           <SwitchRow
             label="Offline tiles only"
             sublabel="Never fetch map tiles over the network"
             value={settings.privacy.offlineTilesOnly}
-            onChange={v => dispatch(updatePrivacy({ offlineTilesOnly: v }))}
+            onChange={(v) => dispatch(updatePrivacy({ offlineTilesOnly: v }))}
           />
           <InfoRow label="Analytics" value="None — zero telemetry" />
           <InfoRow label="Accounts" value="None required" />
@@ -120,7 +120,7 @@ export default function SettingsScreen() {
             label="Camera warnings"
             sublabel="Announce upcoming ALPR cameras"
             value={settings.notifications.announceCameras}
-            onChange={v => dispatch(updateNotifications({ announceCameras: v }))}
+            onChange={(v) => dispatch(updateNotifications({ announceCameras: v }))}
           />
         </Section>
 
@@ -143,7 +143,10 @@ export default function SettingsScreen() {
           <TouchableOpacity style={styles.actionBtn} onPress={handleClearTileCache}>
             <Text style={styles.actionBtnText}>Clear Tile Cache</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.destructiveBtn]} onPress={handleResetSettings}>
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.destructiveBtn]}
+            onPress={handleResetSettings}
+          >
             <Text style={[styles.actionBtnText, styles.destructiveText]}>Reset All Settings</Text>
           </TouchableOpacity>
         </Section>
@@ -264,7 +267,12 @@ const styles = StyleSheet.create({
   rowText: { fontSize: 16, color: '#FFFFFF', flex: 1 },
   sublabel: { fontSize: 12, color: '#8E8E93', marginTop: 2 },
   infoValue: { fontSize: 15, color: '#8E8E93' },
-  segment: { flexDirection: 'row', borderRadius: 8, overflow: 'hidden', backgroundColor: '#38383A' },
+  segment: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#38383A',
+  },
   segmentBtn: { paddingVertical: 6, paddingHorizontal: 12 },
   segmentBtnActive: { backgroundColor: '#3D7BFF' },
   segmentText: { fontSize: 14, color: '#8E8E93' },

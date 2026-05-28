@@ -17,15 +17,15 @@ import type { SearchResult, LatLng } from '../types';
 
 export default function MapScreen() {
   const dispatch = useAppDispatch();
-  const { travelMode, syncIntervalMinutes } = useAppSelector(s => s.settings);
-  const { current: route, navigation: navState } = useAppSelector(s => s.route);
+  const { travelMode, syncIntervalMinutes } = useAppSelector((s) => s.settings);
+  const { current: route, navigation: navState } = useAppSelector((s) => s.route);
   const syncChecked = useRef(false);
 
   // Start location tracking on mount
   useEffect(() => {
     const locationService = LocationService.getInstance();
 
-    locationService.requestPermission().then(granted => {
+    locationService.requestPermission().then((granted) => {
       if (!granted) {
         Alert.alert(
           'Location Permission',
@@ -52,9 +52,7 @@ export default function MapScreen() {
               stepIndex += 1;
             }
 
-            const passed = route.steps
-              .slice(0, stepIndex)
-              .reduce((sum, s) => sum + s.distance, 0);
+            const passed = route.steps.slice(0, stepIndex).reduce((sum, s) => sum + s.distance, 0);
             const remaining = route.totalDistance - passed;
             const elapsedRatio = passed / (route.totalDistance || 1);
             const remainingDuration = route.totalDuration * (1 - elapsedRatio);
@@ -86,7 +84,12 @@ export default function MapScreen() {
               carPlay.updateManeuver(nav, nextStep?.instruction ?? '', 'imperial');
             }
             if (androidAuto.connected) {
-              androidAuto.sendStep(nav, nextStep?.instruction ?? '', nextStep?.maneuverType ?? '', 'imperial');
+              androidAuto.sendStep(
+                nav,
+                nextStep?.instruction ?? '',
+                nextStep?.maneuverType ?? '',
+                'imperial',
+              );
             }
           }
 
@@ -106,7 +109,7 @@ export default function MapScreen() {
     syncChecked.current = true;
     DeflockSync.getInstance()
       .needsSync(syncIntervalMinutes)
-      .then(needs => {
+      .then((needs) => {
         if (needs) dispatch(syncCameras());
       });
   }, [dispatch, syncIntervalMinutes]);
@@ -120,9 +123,7 @@ export default function MapScreen() {
         return;
       }
       dispatch(setDestination(result.location));
-      dispatch(
-        calculateRoute({ origin, destination: result.location, travelMode }),
-      );
+      dispatch(calculateRoute({ origin, destination: result.location, travelMode }));
     },
     [dispatch, travelMode],
   );

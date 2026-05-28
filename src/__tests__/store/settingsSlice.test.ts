@@ -246,7 +246,10 @@ describe('settingsSlice', () => {
       // Modify several fields
       let state = settingsReducer(initialState, setTravelMode('bicycle'));
       state = settingsReducer(state, setUnits('metric'));
-      state = settingsReducer(state, updatePrivacy({ localRoutingOnly: true, offlineTilesOnly: true }));
+      state = settingsReducer(
+        state,
+        updatePrivacy({ localRoutingOnly: true, offlineTilesOnly: true }),
+      );
       state = settingsReducer(state, updateAvoidance({ avoidRadiusMeters: 200 }));
       state = settingsReducer(state, setValhallaEndpoint('https://custom.example.com/route'));
 

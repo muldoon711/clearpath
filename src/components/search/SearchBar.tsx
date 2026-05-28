@@ -20,7 +20,10 @@ interface SearchBarProps {
  * Local-first geocoder using the Nominatim API.
  * Only the query string is sent — no user ID, session, or location.
  */
-export default function SearchBar({ onResultSelect, placeholder = 'Search destination…' }: SearchBarProps) {
+export default function SearchBar({
+  onResultSelect,
+  placeholder = 'Search destination…',
+}: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,7 +38,9 @@ export default function SearchBar({ onResultSelect, placeholder = 'Search destin
     }
     setLoading(true);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=8`;
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+        text,
+      )}&format=json&limit=8`;
       const response = await fetch(url, {
         headers: { 'Accept-Language': 'en', Referer: 'no-referrer' },
       });
@@ -48,7 +53,7 @@ export default function SearchBar({ onResultSelect, placeholder = 'Search destin
       }> = await response.json();
 
       setResults(
-        data.map(item => ({
+        data.map((item) => ({
           id: String(item.place_id),
           label: item.display_name.split(',')[0],
           sublabel: item.display_name.split(',').slice(1, 3).join(',').trim(),
@@ -111,7 +116,7 @@ export default function SearchBar({ onResultSelect, placeholder = 'Search destin
         <FlatList
           style={styles.results}
           data={results}
-          keyExtractor={item => item.id}
+          keyExtractor={(item) => item.id}
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
             <TouchableOpacity

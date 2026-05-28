@@ -45,12 +45,19 @@ export default class CarPlayService {
   }
 
   /** Update the currently displayed maneuver card */
-  updateManeuver(navState: NavigationState, stepInstruction: string, units: 'metric' | 'imperial'): void {
+  updateManeuver(
+    navState: NavigationState,
+    stepInstruction: string,
+    units: 'metric' | 'imperial',
+  ): void {
     if (!this.isConnected || !CarPlayModule) return;
     CarPlayModule.updateManeuver({
       instruction: stepInstruction,
       distanceLabel: formatDistance(navState.distanceToNextManeuver, units),
-      remainingLabel: `${formatDuration(navState.remainingDuration)} · ${formatDistance(navState.remainingDistance, units)}`,
+      remainingLabel: `${formatDuration(navState.remainingDuration)} · ${formatDistance(
+        navState.remainingDistance,
+        units,
+      )}`,
       isOffRoute: navState.isOffRoute,
     });
   }

@@ -28,7 +28,11 @@ export function bearing(a: LatLng, b: LatLng): number {
 }
 
 /** Move a point by deltaMetres in a given bearing (degrees) */
-export function destinationPoint(origin: LatLng, distanceMeters: number, bearingDeg: number): LatLng {
+export function destinationPoint(
+  origin: LatLng,
+  distanceMeters: number,
+  bearingDeg: number,
+): LatLng {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const toDeg = (rad: number) => (rad * 180) / Math.PI;
   const d = distanceMeters / EARTH_RADIUS_M;
@@ -49,7 +53,7 @@ export function destinationPoint(origin: LatLng, distanceMeters: number, bearing
 
 /** Expand a bounding box by a given distance in metres on all sides */
 export function expandBounds(bounds: BoundingBox, metres: number): BoundingBox {
-  const degLat = metres / EARTH_RADIUS_M * (180 / Math.PI);
+  const degLat = (metres / EARTH_RADIUS_M) * (180 / Math.PI);
   const degLng = degLat / Math.cos(((bounds.minLat + bounds.maxLat) / 2) * (Math.PI / 180));
   return {
     minLat: bounds.minLat - degLat,
@@ -71,7 +75,10 @@ export function isInBounds(point: LatLng, bounds: BoundingBox): boolean {
 
 /** Convert a route geometry ([lng, lat] pairs) to a BoundingBox */
 export function geometryBounds(coords: [number, number][]): BoundingBox {
-  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  let minLat = Infinity,
+    maxLat = -Infinity,
+    minLng = Infinity,
+    maxLng = -Infinity;
   for (const [lng, lat] of coords) {
     if (lat < minLat) minLat = lat;
     if (lat > maxLat) maxLat = lat;

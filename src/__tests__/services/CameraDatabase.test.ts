@@ -2,14 +2,16 @@ import CameraDatabase from '../../services/CameraDatabase';
 import type { DeflockGeoJSON, DeflockFeature } from '../../types';
 
 // Helper to build a minimal DeflockGeoJSON fixture
-function buildGeoJSON(cameras: Array<{
-  id: string;
-  lat: number;
-  lng: number;
-  vendor?: string;
-  status?: string;
-}>): DeflockGeoJSON {
-  const features: DeflockFeature[] = cameras.map(c => ({
+function buildGeoJSON(
+  cameras: Array<{
+    id: string;
+    lat: number;
+    lng: number;
+    vendor?: string;
+    status?: string;
+  }>,
+): DeflockGeoJSON {
+  const features: DeflockFeature[] = cameras.map((c) => ({
     type: 'Feature',
     geometry: {
       type: 'Point',
@@ -95,30 +97,30 @@ describe('CameraDatabase', () => {
       const data = buildGeoJSON([
         { id: 'inside-1', lat: 37.75, lng: -122.41 },
         { id: 'inside-2', lat: 37.77, lng: -122.43 },
-        { id: 'outside-north', lat: 37.90, lng: -122.41 },
-        { id: 'outside-south', lat: 37.60, lng: -122.41 },
-        { id: 'outside-east', lat: 37.75, lng: -122.30 },
-        { id: 'outside-west', lat: 37.75, lng: -122.60 },
+        { id: 'outside-north', lat: 37.9, lng: -122.41 },
+        { id: 'outside-south', lat: 37.6, lng: -122.41 },
+        { id: 'outside-east', lat: 37.75, lng: -122.3 },
+        { id: 'outside-west', lat: 37.75, lng: -122.6 },
       ]);
       await db.ingestGeoJSON(data);
     });
 
     const bounds = {
-      minLat: 37.70,
-      maxLat: 37.80,
-      minLng: -122.50,
+      minLat: 37.7,
+      maxLat: 37.8,
+      minLng: -122.5,
       maxLng: -122.35,
     };
 
     it('returns only cameras inside the bounds', async () => {
       const cameras = await db.getCamerasInBounds(bounds);
-      const ids = cameras.map(c => c.id).sort();
+      const ids = cameras.map((c) => c.id).sort();
       expect(ids).toEqual(['inside-1', 'inside-2']);
     });
 
     it('excludes cameras outside bounds', async () => {
       const cameras = await db.getCamerasInBounds(bounds);
-      const ids = cameras.map(c => c.id);
+      const ids = cameras.map((c) => c.id);
       expect(ids).not.toContain('outside-north');
       expect(ids).not.toContain('outside-south');
       expect(ids).not.toContain('outside-east');
@@ -133,11 +135,9 @@ describe('CameraDatabase', () => {
 
     it('includes cameras exactly on the boundary (inclusive)', async () => {
       // Add a camera exactly at a corner of the bounds
-      await db.ingestGeoJSON(
-        buildGeoJSON([{ id: 'on-corner', lat: 37.70, lng: -122.50 }]),
-      );
+      await db.ingestGeoJSON(buildGeoJSON([{ id: 'on-corner', lat: 37.7, lng: -122.5 }]));
       const cameras = await db.getCamerasInBounds(bounds);
-      const ids = cameras.map(c => c.id);
+      const ids = cameras.map((c) => c.id);
       expect(ids).toContain('on-corner');
     });
   });
@@ -145,7 +145,9 @@ describe('CameraDatabase', () => {
   describe('getCameraById', () => {
     beforeEach(async () => {
       await db.ingestGeoJSON(
-        buildGeoJSON([{ id: 'cam-abc', lat: 37.7, lng: -122.4, vendor: 'motorola', status: 'inactive' }]),
+        buildGeoJSON([
+          { id: 'cam-abc', lat: 37.7, lng: -122.4, vendor: 'motorola', status: 'inactive' },
+        ]),
       );
     });
 
@@ -181,9 +183,7 @@ describe('CameraDatabase', () => {
 
   describe('clearAll', () => {
     it('empties the camera store', async () => {
-      await db.ingestGeoJSON(
-        buildGeoJSON([{ id: 'cam-x', lat: 37.7, lng: -122.4 }]),
-      );
+      await db.ingestGeoJSON(buildGeoJSON([{ id: 'cam-x', lat: 37.7, lng: -122.4 }]));
       expect(await db.getTotalCount()).toBe(1);
 
       await db.clearAll();

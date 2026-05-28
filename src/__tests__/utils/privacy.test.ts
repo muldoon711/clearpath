@@ -92,7 +92,7 @@ describe('redactCoordinates', () => {
   });
 
   it('handles exact 2-decimal values unchanged', () => {
-    const result = redactCoordinates(10.50, -20.25);
+    const result = redactCoordinates(10.5, -20.25);
     expect(result.lat).toBe(10.5);
     expect(result.lng).toBe(-20.25);
   });
@@ -115,7 +115,7 @@ describe('isTelemetryUrl', () => {
     'https://www.googletagmanager.com/gtag/js',
   ];
 
-  test.each(telemetryUrls)('returns true for %s', url => {
+  test.each(telemetryUrls)('returns true for %s', (url) => {
     expect(isTelemetryUrl(url)).toBe(true);
   });
 
@@ -126,7 +126,7 @@ describe('isTelemetryUrl', () => {
     'https://nominatim.openstreetmap.org/search',
   ];
 
-  test.each(safeUrls)('returns false for %s', url => {
+  test.each(safeUrls)('returns false for %s', (url) => {
     expect(isTelemetryUrl(url)).toBe(false);
   });
 
@@ -143,34 +143,26 @@ describe('validateEndpointUrl', () => {
   });
 
   it('accepts https URL on a subdomain of allowed host', () => {
-    expect(
-      validateEndpointUrl('https://api.example.com/endpoint', ['example.com']),
-    ).toBe(true);
+    expect(validateEndpointUrl('https://api.example.com/endpoint', ['example.com'])).toBe(true);
   });
 
   it('accepts http URL for a host on the allowlist (http is permitted by implementation)', () => {
     // The implementation allows both http and https for any allowed host
-    expect(
-      validateEndpointUrl('http://example.com/route', ['example.com']),
-    ).toBe(true);
+    expect(validateEndpointUrl('http://example.com/route', ['example.com'])).toBe(true);
   });
 
   it('accepts http URL for localhost', () => {
-    expect(
-      validateEndpointUrl('http://localhost:8002/route', ['localhost']),
-    ).toBe(true);
+    expect(validateEndpointUrl('http://localhost:8002/route', ['localhost'])).toBe(true);
   });
 
   it('rejects a URL whose host is not in the allowlist', () => {
-    expect(
-      validateEndpointUrl('https://evil.com/route', ['valhalla.openstreetmap.de']),
-    ).toBe(false);
+    expect(validateEndpointUrl('https://evil.com/route', ['valhalla.openstreetmap.de'])).toBe(
+      false,
+    );
   });
 
   it('rejects ftp:// protocol', () => {
-    expect(
-      validateEndpointUrl('ftp://example.com/file', ['example.com']),
-    ).toBe(false);
+    expect(validateEndpointUrl('ftp://example.com/file', ['example.com'])).toBe(false);
   });
 
   it('rejects an invalid URL', () => {
@@ -179,9 +171,7 @@ describe('validateEndpointUrl', () => {
 
   it('rejects partial host name match (not on subdomain boundary)', () => {
     // "notexample.com" should NOT match allowedHost "example.com"
-    expect(
-      validateEndpointUrl('https://notexample.com/path', ['example.com']),
-    ).toBe(false);
+    expect(validateEndpointUrl('https://notexample.com/path', ['example.com'])).toBe(false);
   });
 });
 

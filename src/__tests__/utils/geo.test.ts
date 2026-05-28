@@ -149,8 +149,8 @@ describe('decodePolyline', () => {
     const encoded = '_p~iF~ps|U_ulLnnqC';
     const result = decodePolyline(encoded, 5);
     expect(result).toHaveLength(2);
-    expect(result[0][1]).toBeCloseTo(38.5, 1);    // lat
-    expect(result[0][0]).toBeCloseTo(-120.2, 1);  // lng
+    expect(result[0][1]).toBeCloseTo(38.5, 1); // lat
+    expect(result[0][0]).toBeCloseTo(-120.2, 1); // lng
     expect(result[1][1]).toBeCloseTo(40.7, 1);
     expect(result[1][0]).toBeCloseTo(-120.95, 1);
   });

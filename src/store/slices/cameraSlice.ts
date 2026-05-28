@@ -38,7 +38,7 @@ export const syncCameras = createAsyncThunk<
 
 export const loadVisibleCameras = createAsyncThunk<ALPRCamera[], BoundingBox>(
   'cameras/loadVisible',
-  async bounds => {
+  async (bounds) => {
     return CameraDatabase.getInstance().getCamerasInBounds(bounds);
   },
 );
@@ -54,9 +54,9 @@ const cameraSlice = createSlice({
       state.visibleCameras = [];
     },
   },
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder
-      .addCase(syncCameras.pending, state => {
+      .addCase(syncCameras.pending, (state) => {
         state.sync.status = 'syncing';
         state.sync.error = null;
       })

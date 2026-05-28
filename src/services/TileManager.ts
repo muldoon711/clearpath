@@ -53,10 +53,7 @@ export default class TileManager {
     let total = 0;
     for (let z = minZoom; z <= maxZoom; z++) {
       const topLeft = latLngToTile({ latitude: bounds.maxLat, longitude: bounds.minLng }, z);
-      const bottomRight = latLngToTile(
-        { latitude: bounds.minLat, longitude: bounds.maxLng },
-        z,
-      );
+      const bottomRight = latLngToTile({ latitude: bounds.minLat, longitude: bounds.maxLng }, z);
       const cols = Math.abs(bottomRight.x - topLeft.x) + 1;
       const rows = Math.abs(bottomRight.y - topLeft.y) + 1;
       total += cols * rows;
