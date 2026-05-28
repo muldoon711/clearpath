@@ -28,6 +28,11 @@ const BANNED_PATTERNS = [
 const SCAN_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.swift', '.kt', '.java'];
 const SCAN_DIRS = ['src', 'ios', 'android'];
 const IGNORE_DIRS = new Set(['node_modules', '.git', 'build', 'dist', '__generated__']);
+// Files that define detection blocklists — they contain the banned strings intentionally
+const IGNORE_FILES = new Set([
+  'src/utils/privacy.ts',
+  'scripts/privacy-audit.js',
+]);
 
 function walk(dir) {
   const files = [];
@@ -50,6 +55,8 @@ let violations = 0;
 for (const dir of SCAN_DIRS) {
   const files = walk(path.join(root, dir));
   for (const file of files) {
+    const rel = path.relative(root, file);
+    if (IGNORE_FILES.has(rel)) continue;
     const content = fs.readFileSync(file, 'utf-8');
     const lines = content.split('\n');
     lines.forEach((line, i) => {
