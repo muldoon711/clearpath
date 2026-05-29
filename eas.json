@@ -1,0 +1,35 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "development": {
+      "ios": {
+        "simulator": false,
+        "buildConfiguration": "Debug",
+        "distribution": "internal"
+      }
+    },
+    "preview": {
+      "ios": {
+        "buildConfiguration": "Release",
+        "distribution": "internal"
+      }
+    },
+    "production": {
+      "ios": {
+        "buildConfiguration": "Release",
+        "distribution": "store"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "",
+        "ascAppId": "",
+        "appleTeamId": ""
+      }
+    }
+  }
+}

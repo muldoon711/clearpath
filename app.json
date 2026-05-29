@@ -1,4 +1,26 @@
 {
   "name": "ClearPath",
-  "displayName": "ClearPath"
+  "displayName": "ClearPath",
+  "expo": {
+    "name": "ClearPath",
+    "slug": "clearpath",
+    "version": "0.1.0",
+    "orientation": "default",
+    "icon": "./ios/ClearPath/Images.xcassets/AppIcon.appiconset/Contents.json",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "me.clearpath.app",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "ClearPath uses your location to show your position on the map and calculate routes. Location data never leaves your device.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "ClearPath uses your location in the background to continue navigation. Location data never leaves your device.",
+        "UIBackgroundModes": ["location"]
+      }
+    },
+    "android": {
+      "package": "me.clearpath.app",
+      "versionCode": 1
+    }
+  }
 }
