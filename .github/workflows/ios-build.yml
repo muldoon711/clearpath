@@ -50,6 +50,33 @@ jobs:
         working-directory: ios
         run: pod install 2>&1 | tee /tmp/pod-install.log; exit ${PIPESTATUS[0]}
 
+      - name: Diagnose and strip MapLibre SPM refs from user project
+        run: |
+          set +e
+          echo "=== MapLibre refs in ClearPath.xcodeproj after pod install ==="
+          grep -c "maplibre\|MapLibre\|maplibre-gl-native" ios/ClearPath.xcodeproj/project.pbxproj 2>/dev/null || echo "0"
+          echo "=== MapLibre refs in Pods.xcodeproj after pod install ==="
+          grep -c "maplibre\|MapLibre\|maplibre-gl-native" ios/Pods/Pods.xcodeproj/project.pbxproj 2>/dev/null || echo "0"
+          echo "=== Removing any MapLibre SPM refs from ClearPath.xcodeproj ==="
+          ruby - <<'RUBY'
+          require 'xcodeproj'
+          path = 'ios/ClearPath.xcodeproj'
+          project = Xcodeproj::Project.open(path)
+          pkg = project.root_object.package_references.find { |p|
+            p.respond_to?(:repositoryURL) && p.repositoryURL.to_s.include?('maplibre-gl-native')
+          }
+          if pkg
+            project.targets.each do |t|
+              t.package_product_dependencies.delete_if { |d| d.package == pkg }
+            end
+            project.root_object.package_references.delete(pkg)
+            project.save
+            puts "Removed MapLibre SPM reference from ClearPath.xcodeproj"
+          else
+            puts "No MapLibre SPM reference found in ClearPath.xcodeproj (nothing to remove)"
+          end
+          RUBY
+
       - name: xcodebuild archive (unsigned)
         run: |
           xcodebuild archive \
