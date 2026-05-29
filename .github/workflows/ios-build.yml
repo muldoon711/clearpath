@@ -49,16 +49,9 @@ jobs:
         working-directory: ios
         run: pod install
 
-      - name: Bundle JS for production
-        run: |
-          npx react-native bundle \
-            --platform ios \
-            --dev false \
-            --entry-file index.js \
-            --bundle-output ios/ClearPath/main.jsbundle \
-            --assets-dest ios/ClearPath/assets
-
       - name: xcodebuild archive (unsigned)
+        # The "Bundle React Native code and images" build phase in the xcodeproj
+        # runs react-native-xcode.sh automatically — no separate bundle step needed.
         run: |
           xcodebuild archive \
             -workspace ios/ClearPath.xcworkspace \
