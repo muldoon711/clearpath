@@ -45,7 +45,7 @@ jobs:
 
       - name: pod install
         working-directory: ios
-        run: pod install
+        run: pod install 2>&1 | tee /tmp/pod-install.log; exit ${PIPESTATUS[0]}
 
       - name: Resolve SPM packages
         run: |
@@ -53,7 +53,7 @@ jobs:
             -workspace ios/ClearPath.xcworkspace \
             -scheme ClearPath \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-            2>&1 | tail -20
+            2>&1 | tee /tmp/spm-resolve.log; exit ${PIPESTATUS[0]}
 
       - name: xcodebuild archive (unsigned)
         run: |
@@ -69,6 +69,23 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             EXCLUDED_ARCHS="x86_64" \
             2>&1 | tee /tmp/xcodebuild.log; exit ${PIPESTATUS[0]}
+
+      - name: Post build errors to PR
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          # Try to capture the most relevant error lines
+          ERRORS=$(grep -E " error: | error\]|BUILD FAILED|error:" /tmp/xcodebuild.log 2>/dev/null | grep -v "note:" | tail -60)
+          if [ -z "$ERRORS" ]; then
+            ERRORS=$(tail -80 /tmp/xcodebuild.log 2>/dev/null)
+          fi
+          if [ -z "$ERRORS" ]; then
+            # Maybe pod install failed
+            ERRORS="pod install output:\n$(tail -50 /tmp/pod-install.log 2>/dev/null)\n\nSPM resolve output:\n$(tail -30 /tmp/spm-resolve.log 2>/dev/null)"
+          fi
+          gh pr comment 1 --repo muldoon711/clearpath --body "$(printf '**iOS Build failed** — errors:\n```\n%s\n```' "$ERRORS")"
 
       - name: Upload build log on failure
         if: failure()
