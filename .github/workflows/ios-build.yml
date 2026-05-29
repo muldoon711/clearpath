@@ -4,13 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: ["claude/**", "main"]
-    paths:
-      - "ios/**"
-      - "src/**"
-      - "App.tsx"
-      - "index.js"
-      - "package.json"
-      - "package-lock.json"
 
 jobs:
   build-ios:
