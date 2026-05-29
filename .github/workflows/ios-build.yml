@@ -92,6 +92,19 @@ jobs:
             EXCLUDED_ARCHS="x86_64" \
             2>&1 | tee /tmp/xcodebuild.log; exit ${PIPESTATUS[0]}
 
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          echo "=== Archive contents ==="
+          find "$RUNNER_TEMP/ClearPath.xcarchive" -maxdepth 4 | sort
+          APPS="$RUNNER_TEMP/ClearPath.xcarchive/Products/Applications"
+          OUT="$RUNNER_TEMP/ipa"
+          mkdir -p "$OUT/Payload"
+          cp -r "$APPS/ClearPath.app" "$OUT/Payload/"
+          cd "$OUT"
+          zip -r ClearPath-unsigned.ipa Payload/
+          echo "IPA size: $(du -sh ClearPath-unsigned.ipa)"
+
       - name: Post build errors to PR
         if: failure()
         env:
@@ -104,7 +117,6 @@ jobs:
             ERRORS=$(tail -80 /tmp/xcodebuild.log 2>/dev/null)
           fi
           if [ -z "$ERRORS" ]; then
-            # Maybe pod install failed
             ERRORS="pod install output:\n$(tail -50 /tmp/pod-install.log 2>/dev/null)"
           fi
           gh pr comment 1 --repo muldoon711/clearpath --body "$(printf '**iOS Build failed** — errors:\n```\n%s\n```' "$ERRORS")"
@@ -116,17 +128,6 @@ jobs:
           name: xcodebuild-log
           path: /tmp/xcodebuild.log
           retention-days: 3
-
-      - name: Package IPA
-        run: |
-          set -euo pipefail
-          APPS="$RUNNER_TEMP/ClearPath.xcarchive/Products/Applications"
-          OUT="$RUNNER_TEMP/ipa"
-          mkdir -p "$OUT/Payload"
-          cp -r "$APPS/ClearPath.app" "$OUT/Payload/"
-          cd "$OUT"
-          zip -r ClearPath-unsigned.ipa Payload/
-          echo "IPA size: $(du -sh ClearPath-unsigned.ipa)"
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
