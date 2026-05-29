@@ -2,22 +2,15 @@ name: iOS Build
 
 on:
   workflow_dispatch:
-    inputs:
-      distribution:
-        description: "Distribution type"
-        required: true
-        default: "development"
-        type: choice
-        options:
-          - development
-          - ad-hoc
   push:
-    branches: ["claude/**"]
+    branches: ["claude/**", "main"]
     paths:
       - "ios/**"
       - "src/**"
       - "App.tsx"
+      - "index.js"
       - "package.json"
+      - "package-lock.json"
 
 jobs:
   build-ios:
@@ -43,55 +36,69 @@ jobs:
           bundler-cache: false
 
       - name: Install CocoaPods
-        run: sudo gem install cocoapods --no-document
+        run: gem install cocoapods --no-document
 
-      - name: Cache CocoaPods
+      - name: Cache Pods
         uses: actions/cache@v4
         with:
           path: ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: ${{ runner.os }}-pods-
 
-      - name: Install pods
-        run: |
-          cd ios
-          pod install
+      - name: pod install
+        working-directory: ios
+        run: pod install
 
-      - name: Bundle JS
+      - name: Bundle JS for production
         run: |
           npx react-native bundle \
             --platform ios \
             --dev false \
             --entry-file index.js \
-            --bundle-output ios/main.jsbundle \
-            --assets-dest ios/assets
+            --bundle-output ios/ClearPath/main.jsbundle \
+            --assets-dest ios/ClearPath/assets
 
-      - name: Build archive (unsigned)
+      - name: xcodebuild archive (unsigned)
         run: |
           xcodebuild archive \
             -workspace ios/ClearPath.xcworkspace \
             -scheme ClearPath \
             -configuration Release \
             -destination "generic/platform=iOS" \
-            -archivePath $RUNNER_TEMP/ClearPath.xcarchive \
+            -archivePath "$RUNNER_TEMP/ClearPath.xcarchive" \
             DEVELOPMENT_TEAM="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            | xcpretty || true
+            EXCLUDED_ARCHS="x86_64"
 
-      - name: Export unsigned IPA
+      - name: Package IPA
         run: |
-          mkdir -p $RUNNER_TEMP/ipa-output
-          cd $RUNNER_TEMP/ClearPath.xcarchive/Products/Applications
-          mkdir -p Payload
-          cp -r ClearPath.app Payload/
-          zip -r $RUNNER_TEMP/ipa-output/ClearPath-unsigned.ipa Payload/
-          ls -lh $RUNNER_TEMP/ipa-output/
+          set -euo pipefail
+          APPS="$RUNNER_TEMP/ClearPath.xcarchive/Products/Applications"
+          OUT="$RUNNER_TEMP/ipa"
+          mkdir -p "$OUT/Payload"
+          cp -r "$APPS/ClearPath.app" "$OUT/Payload/"
+          cd "$OUT"
+          zip -r ClearPath-unsigned.ipa Payload/
+          echo "IPA size: $(du -sh ClearPath-unsigned.ipa)"
 
-      - name: Upload IPA artifact
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: ClearPath-unsigned-ipa
-          path: ${{ runner.temp }}/ipa-output/ClearPath-unsigned.ipa
+          path: ${{ runner.temp }}/ipa/ClearPath-unsigned.ipa
           retention-days: 7
+
+      - name: Print install instructions
+        run: |
+          echo "================================================"
+          echo "IPA built successfully!"
+          echo ""
+          echo "To install on your iPhone:"
+          echo "  Mac:     Drag ClearPath-unsigned.ipa into AltStore"
+          echo "  Windows: Use Sideloadly (sideloadly.io) or AltStore"
+          echo ""
+          echo "Both tools sign the IPA with your free Apple ID"
+          echo "and install it wirelessly. Certificate lasts 7 days"
+          echo "and auto-renews while AltServer is running."
+          echo "================================================"
