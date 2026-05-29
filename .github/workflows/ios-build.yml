@@ -57,14 +57,6 @@ jobs:
         working-directory: ios
         run: pod install 2>&1 | tee /tmp/pod-install.log; exit ${PIPESTATUS[0]}
 
-      - name: Resolve SPM packages
-        run: |
-          xcodebuild -resolvePackageDependencies \
-            -workspace ios/ClearPath.xcworkspace \
-            -scheme ClearPath \
-            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-            2>&1 | tee /tmp/spm-resolve.log; exit ${PIPESTATUS[0]}
-
       - name: xcodebuild archive (unsigned)
         run: |
           xcodebuild archive \
@@ -93,7 +85,7 @@ jobs:
           fi
           if [ -z "$ERRORS" ]; then
             # Maybe pod install failed
-            ERRORS="pod install output:\n$(tail -50 /tmp/pod-install.log 2>/dev/null)\n\nSPM resolve output:\n$(tail -30 /tmp/spm-resolve.log 2>/dev/null)"
+            ERRORS="pod install output:\n$(tail -50 /tmp/pod-install.log 2>/dev/null)"
           fi
           gh pr comment 1 --repo muldoon711/clearpath --body "$(printf '**iOS Build failed** — errors:\n```\n%s\n```' "$ERRORS")"
 
