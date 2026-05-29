@@ -38,15 +38,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
-          restore-keys: ${{ runner.os }}-pods-
-
-      - name: Cache SPM packages
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/DerivedData/SourcePackages
-          key: ${{ runner.os }}-spm-maplibre-6.17.1
-          restore-keys: ${{ runner.os }}-spm-
+          key: ${{ runner.os }}-pods-v2-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: ${{ runner.os }}-pods-v2-
 
       - name: Set NODE_BINARY for Xcode build phases
         # xcodebuild runs scripts in a restricted PATH; write the absolute node
