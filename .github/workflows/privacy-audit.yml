@@ -40,10 +40,15 @@ jobs:
           done
           echo "No banned analytics packages detected."
 
-      - name: Verify MapLibre telemetry is disabled
+      - name: Verify MapLibre has no telemetry (v10+ removed it entirely)
         run: |
-          if ! grep -r "setTelemetryEnabled(false)" src/ App.tsx 2>/dev/null | grep -q "false"; then
-            echo "WARNING: MapLibre.setTelemetryEnabled(false) not found — telemetry may be on."
+          # maplibre-react-native v10+ permanently removed all telemetry.
+          # setTelemetryEnabled() no longer exists — its absence is correct.
+          # Verify the installed major version is >= 10.
+          VERSION=$(node -e "console.log(require('@maplibre/maplibre-react-native/package.json').version)")
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          if [ "$MAJOR" -lt 10 ]; then
+            echo "FAIL: maplibre-react-native $VERSION is older than v10 — telemetry may be present."
             exit 1
           fi
-          echo "MapLibre telemetry is disabled."
+          echo "OK: maplibre-react-native $VERSION (v10+) has no telemetry."
