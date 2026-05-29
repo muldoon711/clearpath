@@ -38,13 +38,24 @@ jobs:
           key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
           restore-keys: ${{ runner.os }}-pods-
 
+      - name: Set NODE_BINARY for Xcode build phases
+        # xcodebuild runs scripts in a restricted PATH; write the absolute node
+        # path to .xcode.env.local so react-native-xcode.sh can find it.
+        run: echo "export NODE_BINARY=$(which node)" > ios/.xcode.env.local
+
       - name: pod install
         working-directory: ios
         run: pod install
 
+      - name: Resolve SPM packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -workspace ios/ClearPath.xcworkspace \
+            -scheme ClearPath \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            2>&1 | tail -20
+
       - name: xcodebuild archive (unsigned)
-        # The "Bundle React Native code and images" build phase in the xcodeproj
-        # runs react-native-xcode.sh automatically — no separate bundle step needed.
         run: |
           xcodebuild archive \
             -workspace ios/ClearPath.xcworkspace \
@@ -52,10 +63,20 @@ jobs:
             -configuration Release \
             -destination "generic/platform=iOS" \
             -archivePath "$RUNNER_TEMP/ClearPath.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             DEVELOPMENT_TEAM="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            EXCLUDED_ARCHS="x86_64"
+            EXCLUDED_ARCHS="x86_64" \
+            2>&1 | tee /tmp/xcodebuild.log; exit ${PIPESTATUS[0]}
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: /tmp/xcodebuild.log
+          retention-days: 3
 
       - name: Package IPA
         run: |
