@@ -43,12 +43,13 @@ jobs:
       - name: Verify MapLibre has no telemetry (v10+ removed it entirely)
         run: |
           # maplibre-react-native v10+ permanently removed all telemetry.
-          # setTelemetryEnabled() no longer exists — its absence is correct.
-          # Verify the installed major version is >= 10.
-          VERSION=$(node -e "console.log(require('@maplibre/maplibre-react-native/package.json').version)")
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          if [ "$MAJOR" -lt 10 ]; then
-            echo "FAIL: maplibre-react-native $VERSION is older than v10 — telemetry may be present."
-            exit 1
-          fi
-          echo "OK: maplibre-react-native $VERSION (v10+) has no telemetry."
+          # Read the declared version constraint from package.json (no npm install needed).
+          node -e "
+            const v = require('./package.json').dependencies['@maplibre/maplibre-react-native'] || '';
+            const major = parseInt(v.replace(/[^0-9]/,''), 10);
+            if (!major || major < 10) {
+              console.error('FAIL: maplibre-react-native \"' + v + '\" is older than v10 — telemetry may be present.');
+              process.exit(1);
+            }
+            console.log('OK: maplibre-react-native ' + v + ' (v10+) has no telemetry by design.');
+          "
