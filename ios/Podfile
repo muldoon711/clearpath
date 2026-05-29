@@ -31,6 +31,22 @@ target 'ClearPath' do
       config[:reactNativePath],
       :mac_catalyst_enabled => false,
     )
-    $MLRN.post_install(installer)
+    # Add MapLibre SPM only to the Pods project's maplibre-react-native target.
+    # $MLRN.post_install also adds it to the user project, which causes a
+    # signature file collision when xcodebuild processes both projects in the
+    # workspace. MapLibre 6.x is a static XCFramework, so it only needs to be
+    # linked from the Pods side — all symbols end up in libPods-ClearPath.a.
+    pods_project = installer.pods_project
+    mlrn_target = pods_project.targets.find { |t| t.name == "maplibre-react-native" }
+    if mlrn_target
+      $MLRN._add_spm_to_target(
+        pods_project,
+        mlrn_target,
+        $MLRN_SPM_SPEC[:url],
+        $MLRN_SPM_SPEC[:requirement],
+        $MLRN_SPM_SPEC[:product_name]
+      )
+      pods_project.save
+    end
   end
 end
