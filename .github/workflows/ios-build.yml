@@ -37,28 +37,30 @@ jobs:
       - name: Download MapLibre XCFramework (bypasses SPM signature validation)
         run: |
           set -euo pipefail
-          VERSION="6.17.1"
-          URL="https://github.com/maplibre/maplibre-gl-native-distribution/releases/download/${VERSION}/MapLibre.xcframework.zip"
-          echo "Downloading MapLibre ${VERSION} from ${URL}"
-          curl -L --retry 3 --retry-delay 5 "$URL" -o /tmp/MapLibre.xcframework.zip
+          # Binary lives in maplibre-native releases, tag format is ios-v{version}
+          URL="https://github.com/maplibre/maplibre-native/releases/download/ios-v6.17.1/MapLibre.dynamic.xcframework.zip"
+          echo "Downloading MapLibre from ${URL}"
+          curl -fL --retry 3 --retry-delay 5 "$URL" -o /tmp/MapLibre.xcframework.zip
           unzip -q /tmp/MapLibre.xcframework.zip -d /tmp/maplibre/
-          echo "MapLibre XCFramework contents:"
-          ls -la /tmp/maplibre/
+          echo "Extracted contents:"
+          find /tmp/maplibre -maxdepth 2 | sort
 
       - name: Patch maplibre-react-native podspec to use vendored XCFramework
         run: |
           ruby - <<'RUBY'
+          require 'find'
           spec_path = 'node_modules/@maplibre/maplibre-react-native/maplibre-react-native.podspec'
+          # Find the .xcframework directory extracted from the zip
+          framework_path = Dir.glob('/tmp/maplibre/**/*.xcframework').first
+          raise "MapLibre.xcframework not found in /tmp/maplibre" unless framework_path
+          puts "Found framework at: #{framework_path}"
           content = File.read(spec_path)
-          framework_path = '/tmp/maplibre/MapLibre.xcframework'
-          # Add vendored_frameworks to the DynamicLibrary subspec so MLRN
-          # can find MapLibre headers and binary without using SPM.
           content.sub!(
             /sp\.source_files\s*=\s*"ios\/MLRN\/\*\*\/\*\.\{h,m\}"/,
             "sp.source_files\t= \"ios/MLRN/**/*.{h,m}\"\n    sp.vendored_frameworks = '#{framework_path}'"
           )
           File.write(spec_path, content)
-          puts "Patched podspec with vendored_frameworks: #{framework_path}"
+          puts "Patched podspec. vendored_frameworks line:"
           puts content.match(/vendored_frameworks.*/)&.to_s
           RUBY
 
@@ -70,8 +72,6 @@ jobs:
           restore-keys: ${{ runner.os }}-pods-v3-
 
       - name: Set NODE_BINARY for Xcode build phases
-        # xcodebuild runs scripts in a restricted PATH; write the absolute node
-        # path to .xcode.env.local so react-native-xcode.sh can find it.
         run: echo "export NODE_BINARY=$(which node)" > ios/.xcode.env.local
 
       - name: pod install
@@ -93,16 +93,38 @@ jobs:
             EXCLUDED_ARCHS="x86_64" \
             2>&1 | tee /tmp/xcodebuild.log; exit ${PIPESTATUS[0]}
 
+      - name: Upload xcodebuild log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: /tmp/xcodebuild.log
+          retention-days: 3
+
       - name: Package IPA
         run: |
           set -euo pipefail
-          APPS="$RUNNER_TEMP/ClearPath.xcarchive/Products/Applications"
+          echo "=== Archive structure ==="
+          find "$RUNNER_TEMP/ClearPath.xcarchive" -maxdepth 5 | sort
+          APP=$(find "$RUNNER_TEMP/ClearPath.xcarchive" -name "ClearPath.app" -type d 2>/dev/null | head -1)
+          if [ -z "$APP" ]; then
+            echo "ERROR: ClearPath.app not found in archive"
+            exit 1
+          fi
+          echo "Found app at: $APP"
           OUT="$RUNNER_TEMP/ipa"
           mkdir -p "$OUT/Payload"
-          cp -r "$APPS/ClearPath.app" "$OUT/Payload/"
+          cp -r "$APP" "$OUT/Payload/"
           cd "$OUT"
           zip -r ClearPath-unsigned.ipa Payload/
           echo "IPA size: $(du -sh ClearPath-unsigned.ipa)"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClearPath-unsigned-ipa
+          path: ${{ runner.temp }}/ipa/ClearPath-unsigned.ipa
+          retention-days: 7
 
       - name: Post build errors to PR
         if: failure()
@@ -119,22 +141,8 @@ jobs:
           fi
           gh pr comment 1 --repo muldoon711/clearpath --body "$(printf '**iOS Build failed** — errors:\n```\n%s\n```' "$ERRORS")"
 
-      - name: Upload build log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: xcodebuild-log
-          path: /tmp/xcodebuild.log
-          retention-days: 3
-
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: ClearPath-unsigned-ipa
-          path: ${{ runner.temp }}/ipa/ClearPath-unsigned.ipa
-          retention-days: 7
-
       - name: Print install instructions
+        if: success()
         run: |
           echo "================================================"
           echo "IPA built successfully!"
