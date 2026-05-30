@@ -48,16 +48,23 @@ jobs:
       - name: Patch maplibre-react-native podspec to use vendored XCFramework
         run: |
           ruby - <<'RUBY'
-          require 'find'
+          require 'fileutils'
           spec_path = 'node_modules/@maplibre/maplibre-react-native/maplibre-react-native.podspec'
           # Find the .xcframework directory extracted from the zip
-          framework_path = Dir.glob('/tmp/maplibre/**/*.xcframework').first
-          raise "MapLibre.xcframework not found in /tmp/maplibre" unless framework_path
-          puts "Found framework at: #{framework_path}"
+          framework_src = Dir.glob('/tmp/maplibre/**/*.xcframework').first
+          raise "MapLibre.xcframework not found in /tmp/maplibre" unless framework_src
+          puts "Found framework at: #{framework_src}"
+          # CocoaPods requires vendored_frameworks paths to be relative to the podspec.
+          # Copy the xcframework next to the podspec so we can use a bare filename.
+          spec_dir = File.dirname(File.expand_path(spec_path))
+          framework_dest = File.join(spec_dir, File.basename(framework_src))
+          FileUtils.cp_r(framework_src, framework_dest)
+          puts "Copied to: #{framework_dest}"
+          relative_path = File.basename(framework_src)
           content = File.read(spec_path)
           content.sub!(
             /sp\.source_files\s*=\s*"ios\/MLRN\/\*\*\/\*\.\{h,m\}"/,
-            "sp.source_files\t= \"ios/MLRN/**/*.{h,m}\"\n    sp.vendored_frameworks = '#{framework_path}'"
+            "sp.source_files\t= \"ios/MLRN/**/*.{h,m}\"\n    sp.vendored_frameworks = '#{relative_path}'"
           )
           File.write(spec_path, content)
           puts "Patched podspec. vendored_frameworks line:"
