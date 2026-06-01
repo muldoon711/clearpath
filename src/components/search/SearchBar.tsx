@@ -39,40 +39,48 @@ export default function SearchBar({
     }
     setLoading(true);
     try {
-      let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+      const base = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
         text,
       )}&format=json&limit=8`;
+      const headers = { 'Accept-Language': 'en', Referer: 'no-referrer' };
 
-      // Bias results toward the user's current location (soft boundary — still shows
-      // farther results if nothing is found locally).
       const pos = LocationService.getInstance().getLastPosition();
-      if (pos) {
-        const BIAS = 1.5; // ~150 km in each direction
-        const { latitude: lat, longitude: lon } = pos;
-        url += `&viewbox=${lon - BIAS},${lat + BIAS},${lon + BIAS},${lat - BIAS}&bounded=0`;
-      }
 
-      const response = await fetch(url, {
-        headers: { 'Accept-Language': 'en', Referer: 'no-referrer' },
-      });
-      const data: Array<{
+      type NominatimItem = {
         place_id: number;
         display_name: string;
         lat: string;
         lon: string;
         type: string;
-      }> = await response.json();
+      };
 
-      setResults(
+      const toResults = (data: NominatimItem[]) =>
         data.map((item) => ({
           id: String(item.place_id),
           osmId: item.place_id,
           label: item.display_name.split(',')[0],
           sublabel: item.display_name.split(',').slice(1, 3).join(',').trim(),
           location: { latitude: parseFloat(item.lat), longitude: parseFloat(item.lon) },
-          type: 'address',
-        })),
-      );
+          type: 'address' as const,
+        }));
+
+      // Pass 1: strict local bounds — only show results near the user
+      if (pos) {
+        const BIAS = 1.5;
+        const { latitude: lat, longitude: lon } = pos;
+        const viewbox = `${lon - BIAS},${lat + BIAS},${lon + BIAS},${lat - BIAS}`;
+        const localResp = await fetch(`${base}&viewbox=${viewbox}&bounded=1`, { headers });
+        const localData: NominatimItem[] = await localResp.json();
+        if (localData.length > 0) {
+          setResults(toResults(localData));
+          return;
+        }
+      }
+
+      // Pass 2: global fallback (no bounds)
+      const globalResp = await fetch(base, { headers });
+      const globalData: NominatimItem[] = await globalResp.json();
+      setResults(toResults(globalData));
     } catch {
       setResults([]);
     } finally {
