@@ -94,6 +94,13 @@ export interface ValhallaRouteRequest {
   locations: Array<{ lat: number; lon: number }>;
   costing: TravelMode;
   avoid_locations?: CameraAvoidLocation[];
+  costing_options?: {
+    [costing: string]: {
+      use_tolls?: number;
+      use_highways?: number;
+      use_ferry?: number;
+    };
+  };
   directions_options?: {
     units?: 'kilometers' | 'miles';
     language?: string;
@@ -187,6 +194,12 @@ export interface NotificationSettings {
   cameraWarningDistanceMeters: number;
 }
 
+export interface RouteOptions {
+  avoidTolls: boolean;
+  avoidHighways: boolean;
+  avoidFerries: boolean;
+}
+
 export interface AppSettings {
   travelMode: TravelMode;
   units: Units;
@@ -194,6 +207,7 @@ export interface AppSettings {
   mapStyle: MapStyle;
   privacy: PrivacySettings;
   avoidance: AvoidanceSettings;
+  routeOptions: RouteOptions;
   notifications: NotificationSettings;
   valhallaEndpoint: string;
   deflockEndpoint: string;
@@ -205,6 +219,7 @@ export interface AppSettings {
 
 export interface SearchResult {
   id: string;
+  osmId?: number;
   label: string;
   sublabel?: string;
   location: LatLng;

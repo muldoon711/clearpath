@@ -18,6 +18,9 @@ interface RouterOptions {
   avoidCameras: ALPRCamera[];
   avoidRadiusMeters: number;
   endpoint: string;
+  avoidTolls?: boolean;
+  avoidHighways?: boolean;
+  avoidFerries?: boolean;
 }
 
 /**
@@ -40,7 +43,17 @@ export default class ValhallaRouter {
   }
 
   async route(options: RouterOptions): Promise<Route | null> {
-    const { origin, destination, travelMode, avoidCameras, avoidRadiusMeters, endpoint } = options;
+    const {
+      origin,
+      destination,
+      travelMode,
+      avoidCameras,
+      avoidRadiusMeters,
+      endpoint,
+      avoidTolls,
+      avoidHighways,
+      avoidFerries,
+    } = options;
 
     const body: ValhallaRouteRequest = {
       locations: [
@@ -57,6 +70,16 @@ export default class ValhallaRouter {
         lon: c.location.longitude,
         radius: avoidRadiusMeters,
       }));
+    }
+
+    if (avoidTolls || avoidHighways || avoidFerries) {
+      body.costing_options = {
+        [travelMode]: {
+          ...(avoidTolls && { use_tolls: 0 }),
+          ...(avoidHighways && { use_highways: 0 }),
+          ...(avoidFerries && { use_ferry: 0 }),
+        },
+      };
     }
 
     let response: Response;

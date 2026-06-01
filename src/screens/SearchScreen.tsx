@@ -1,37 +1,28 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useAppDispatch, useAppSelector } from '../store';
-import { calculateRoute, setDestination } from '../store/slices/routeSlice';
+import { useAppDispatch } from '../store';
+import { setPendingDestination } from '../store/slices/routeSlice';
 import SearchBar from '../components/search/SearchBar';
-import LocationService from '../services/LocationService';
 import type { SearchResult } from '../types';
 
 export default function SearchScreen() {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
-  const { travelMode } = useAppSelector((s) => s.settings);
   const [recentSearches] = useState<SearchResult[]>([]);
 
   const handleSelect = useCallback(
-    async (result: SearchResult) => {
-      const origin = LocationService.getInstance().getLastPosition();
-      if (!origin) return;
-
-      dispatch(setDestination(result.location));
-      dispatch(calculateRoute({ origin, destination: result.location, travelMode }));
-
-      navigation.goBack();
+    (result: SearchResult) => {
+      dispatch(setPendingDestination(result));
+      // Switch to the Map tab so the detail card is visible
+      navigation.navigate('Map' as never);
     },
-    [dispatch, navigation, travelMode],
+    [dispatch, navigation],
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
         <Text style={styles.title}>Search</Text>
       </View>
 
@@ -74,14 +65,10 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000000' },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
   },
-  backBtn: { marginRight: 12 },
-  backText: { fontSize: 16, color: '#3D7BFF' },
   title: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
   searchWrapper: { paddingHorizontal: 16, paddingVertical: 8 },
   section: { paddingHorizontal: 16, marginTop: 24 },

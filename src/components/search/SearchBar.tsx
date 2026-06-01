@@ -10,6 +10,7 @@ import {
   Keyboard,
 } from 'react-native';
 import type { SearchResult } from '../../types';
+import LocationService from '../../services/LocationService';
 
 interface SearchBarProps {
   onResultSelect: (result: SearchResult) => void;
@@ -38,9 +39,19 @@ export default function SearchBar({
     }
     setLoading(true);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+      let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
         text,
       )}&format=json&limit=8`;
+
+      // Bias results toward the user's current location (soft boundary — still shows
+      // farther results if nothing is found locally).
+      const pos = LocationService.getInstance().getLastPosition();
+      if (pos) {
+        const BIAS = 1.5; // ~150 km in each direction
+        const { latitude: lat, longitude: lon } = pos;
+        url += `&viewbox=${lon - BIAS},${lat + BIAS},${lon + BIAS},${lat - BIAS}&bounded=0`;
+      }
+
       const response = await fetch(url, {
         headers: { 'Accept-Language': 'en', Referer: 'no-referrer' },
       });
@@ -55,6 +66,7 @@ export default function SearchBar({
       setResults(
         data.map((item) => ({
           id: String(item.place_id),
+          osmId: item.place_id,
           label: item.display_name.split(',')[0],
           sublabel: item.display_name.split(',').slice(1, 3).join(',').trim(),
           location: { latitude: parseFloat(item.lat), longitude: parseFloat(item.lon) },

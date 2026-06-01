@@ -1,5 +1,12 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import type { Route, RouteStatus, NavigationState, LatLng, TravelMode } from '../../types';
+import type {
+  Route,
+  RouteStatus,
+  NavigationState,
+  LatLng,
+  TravelMode,
+  SearchResult,
+} from '../../types';
 import ValhallaRouter from '../../services/ValhallaRouter';
 import CameraDatabase from '../../services/CameraDatabase';
 import type { RootState } from '../index';
@@ -10,6 +17,7 @@ interface RouteSliceState {
   error: string | null;
   destination: LatLng | null;
   navigation: NavigationState | null;
+  pendingDestination: SearchResult | null;
 }
 
 const initialState: RouteSliceState = {
@@ -18,6 +26,7 @@ const initialState: RouteSliceState = {
   error: null,
   destination: null,
   navigation: null,
+  pendingDestination: null,
 };
 
 export const calculateRoute = createAsyncThunk<
@@ -26,7 +35,7 @@ export const calculateRoute = createAsyncThunk<
   { state: RootState; rejectValue: string }
 >('route/calculate', async ({ origin, destination, travelMode }, { getState, rejectWithValue }) => {
   const state = getState();
-  const { avoidance } = state.settings;
+  const { avoidance, routeOptions } = state.settings;
 
   const cameras = await CameraDatabase.getInstance().getCamerasInBounds({
     minLat: Math.min(origin.latitude, destination.latitude) - 0.1,
@@ -51,6 +60,9 @@ export const calculateRoute = createAsyncThunk<
     avoidCameras,
     avoidRadiusMeters: avoidance.avoidRadiusMeters,
     endpoint: state.settings.valhallaEndpoint,
+    avoidTolls: routeOptions?.avoidTolls,
+    avoidHighways: routeOptions?.avoidHighways,
+    avoidFerries: routeOptions?.avoidFerries,
   });
 
   if (!route) {
@@ -69,6 +81,9 @@ const routeSlice = createSlice({
       state.error = null;
       state.destination = null;
       state.navigation = null;
+    },
+    setPendingDestination(state, action: PayloadAction<SearchResult | null>) {
+      state.pendingDestination = action.payload;
     },
     setDestination(state, action: PayloadAction<LatLng | null>) {
       state.destination = action.payload;
@@ -107,7 +122,13 @@ const routeSlice = createSlice({
   },
 });
 
-export const { clearRoute, setDestination, updateNavigation, setArrived, setOffRoute } =
-  routeSlice.actions;
+export const {
+  clearRoute,
+  setPendingDestination,
+  setDestination,
+  updateNavigation,
+  setArrived,
+  setOffRoute,
+} = routeSlice.actions;
 
 export default routeSlice.reducer;
