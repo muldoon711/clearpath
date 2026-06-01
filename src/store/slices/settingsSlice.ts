@@ -3,6 +3,7 @@ import type {
   AppSettings,
   PrivacySettings,
   AvoidanceSettings,
+  RouteOptions,
   NotificationSettings,
   TravelMode,
   MapStyle,
@@ -29,6 +30,11 @@ const initialState: AppSettings = {
     avoidMotorola: true,
     avoidUnknown: false,
     avoidRadiusMeters: 50,
+  },
+  routeOptions: {
+    avoidTolls: false,
+    avoidHighways: false,
+    avoidFerries: false,
   },
   notifications: {
     announceCameras: true,
@@ -61,6 +67,9 @@ const settingsSlice = createSlice({
     updateAvoidance(state, action: PayloadAction<Partial<AvoidanceSettings>>) {
       Object.assign(state.avoidance, action.payload);
     },
+    updateRouteOptions(state, action: PayloadAction<Partial<RouteOptions>>) {
+      Object.assign(state.routeOptions, action.payload);
+    },
     updateNotifications(state, action: PayloadAction<Partial<NotificationSettings>>) {
       Object.assign(state.notifications, action.payload);
     },
@@ -86,6 +95,7 @@ export const {
   setMapStyle,
   updatePrivacy,
   updateAvoidance,
+  updateRouteOptions,
   updateNotifications,
   setValhallaEndpoint,
   setDeflockEndpoint,

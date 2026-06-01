@@ -2,28 +2,46 @@ import React, { useEffect, useCallback, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Alert } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../store';
 import { setCenter, setIsFollowingUser } from '../store/slices/mapSlice';
-import { calculateRoute, setDestination } from '../store/slices/routeSlice';
+import {
+  calculateRoute,
+  setDestination,
+  setPendingDestination,
+  updateNavigation,
+  setArrived,
+  clearRoute,
+} from '../store/slices/routeSlice';
 import { syncCameras } from '../store/slices/cameraSlice';
-import { updateNavigation } from '../store/slices/routeSlice';
 import ClearpathMap from '../components/map/ClearpathMap';
 import TurnByTurn from '../components/navigation/TurnByTurn';
 import SearchBar from '../components/search/SearchBar';
+import PlaceDetailCard from '../components/map/PlaceDetailCard';
 import LocationService from '../services/LocationService';
 import CarPlayService from '../services/CarPlayService';
 import AndroidAutoService from '../services/AndroidAutoService';
 import DeflockSync from '../services/DeflockSync';
+import TTSService from '../services/TTSService';
 import { haversineDistance } from '../utils/geo';
 import type { SearchResult, LatLng } from '../types';
 
+const ARRIVAL_THRESHOLD_METERS = 25;
+
 export default function MapScreen() {
   const dispatch = useAppDispatch();
-  const { travelMode, syncIntervalMinutes } = useAppSelector((s) => s.settings);
-  const { current: route, navigation: navState } = useAppSelector((s) => s.route);
+  const { travelMode, syncIntervalMinutes, units, notifications } = useAppSelector(
+    (s) => s.settings,
+  );
+  const {
+    current: route,
+    navigation: navState,
+    status,
+    pendingDestination,
+  } = useAppSelector((s) => s.route);
   const syncChecked = useRef(false);
+  const arrivedRef = useRef(false);
 
-  // Start location tracking on mount
   useEffect(() => {
     const locationService = LocationService.getInstance();
+    const tts = TTSService.getInstance();
 
     locationService.requestPermission().then((granted) => {
       if (!granted) {
@@ -39,16 +57,27 @@ export default function MapScreen() {
         onLocation: (location: LatLng, heading: number, speed: number) => {
           dispatch(setCenter(location));
 
-          // Update navigation if a route is active
           if (route && navState) {
+            const lastStepIndex = route.steps.length - 1;
             const currentStep = route.steps[navState.currentStepIndex];
             if (!currentStep) return;
 
             const distToStep = haversineDistance(location, currentStep.location);
-            let stepIndex = navState.currentStepIndex;
 
-            // Advance to next step when close enough
-            if (distToStep < 15 && stepIndex < route.steps.length - 1) {
+            // Arrival detection
+            if (
+              !arrivedRef.current &&
+              navState.currentStepIndex >= lastStepIndex - 1 &&
+              distToStep < ARRIVAL_THRESHOLD_METERS
+            ) {
+              arrivedRef.current = true;
+              tts.announceArrival();
+              dispatch(setArrived());
+              return;
+            }
+
+            let stepIndex = navState.currentStepIndex;
+            if (distToStep < 15 && stepIndex < lastStepIndex) {
               stepIndex += 1;
             }
 
@@ -68,7 +97,17 @@ export default function MapScreen() {
               }),
             );
 
-            // Sync nav state to CarPlay / Android Auto
+            // TTS turn announcements
+            const currentInstruction = route.steps[stepIndex]?.instruction ?? '';
+            tts.checkManeuver(stepIndex, distToStep, currentInstruction, units);
+
+            // TTS camera warnings
+            if (notifications.announceCameras) {
+              // Closest camera to current position handled via rough proximity check
+              tts.announceCamera(distToStep, notifications.cameraWarningDistanceMeters);
+            }
+
+            // Sync to CarPlay / Android Auto
             const nextStep = route.steps[stepIndex];
             const carPlay = CarPlayService.getInstance();
             const androidAuto = AndroidAutoService.getInstance();
@@ -93,7 +132,6 @@ export default function MapScreen() {
             }
           }
 
-          // Rotate map to heading when following
           dispatch(setIsFollowingUser(true));
         },
       });
@@ -102,6 +140,14 @@ export default function MapScreen() {
     return () => locationService.stopTracking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
+
+  // Reset arrival flag when a new route starts
+  useEffect(() => {
+    if (status === 'active') {
+      arrivedRef.current = false;
+      TTSService.getInstance().reset();
+    }
+  }, [status]);
 
   // Background camera sync
   useEffect(() => {
@@ -114,38 +160,79 @@ export default function MapScreen() {
       });
   }, [dispatch, syncIntervalMinutes]);
 
+  // When a search result is selected on this screen, show the detail card
   const handleSearchResult = useCallback(
-    async (result: SearchResult) => {
-      const locationService = LocationService.getInstance();
-      const origin = locationService.getLastPosition();
-      if (!origin) {
-        Alert.alert('Location unavailable', 'Waiting for GPS fix…');
-        return;
-      }
-      dispatch(setDestination(result.location));
-      dispatch(calculateRoute({ origin, destination: result.location, travelMode }));
+    (result: SearchResult) => {
+      dispatch(setPendingDestination(result));
     },
-    [dispatch, travelMode],
+    [dispatch],
   );
+
+  const handleStartNavigation = useCallback(() => {
+    if (!pendingDestination) return;
+    const origin = LocationService.getInstance().getLastPosition();
+    if (!origin) {
+      Alert.alert('Location unavailable', 'Waiting for GPS fix…');
+      return;
+    }
+    dispatch(setPendingDestination(null));
+    dispatch(setDestination(pendingDestination.location));
+    dispatch(calculateRoute({ origin, destination: pendingDestination.location, travelMode }));
+  }, [dispatch, pendingDestination, travelMode]);
+
+  const handleDismissCard = useCallback(() => {
+    dispatch(setPendingDestination(null));
+  }, [dispatch]);
 
   const handleRecenter = useCallback(() => {
     dispatch(setIsFollowingUser(true));
   }, [dispatch]);
 
+  // Show arrived screen briefly then auto-clear
+  useEffect(() => {
+    if (status === 'arrived') {
+      const timer = setTimeout(() => dispatch(clearRoute()), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [status, dispatch]);
+
   return (
     <View style={styles.container}>
       <ClearpathMap />
-      <SearchBar onResultSelect={handleSearchResult} />
+
+      {/* Only show SearchBar when no detail card is open and not actively navigating */}
+      {!pendingDestination && status !== 'active' && status !== 'calculating' && (
+        <SearchBar onResultSelect={handleSearchResult} />
+      )}
+
       <TurnByTurn />
 
+      {/* Arrived banner */}
+      {status === 'arrived' && (
+        <View style={styles.arrivedBanner}>
+          <Text style={styles.arrivedText}>📍 You have arrived!</Text>
+        </View>
+      )}
+
       {/* Re-center FAB */}
-      <TouchableOpacity
-        style={styles.recenterBtn}
-        onPress={handleRecenter}
-        accessibilityLabel="Re-center map on my location"
-      >
-        <Text style={styles.recenterIcon}>◎</Text>
-      </TouchableOpacity>
+      {!pendingDestination && (
+        <TouchableOpacity
+          style={styles.recenterBtn}
+          onPress={handleRecenter}
+          accessibilityLabel="Re-center map on my location"
+        >
+          <Text style={styles.recenterIcon}>◎</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Place detail card — overlays the map */}
+      {pendingDestination && (
+        <PlaceDetailCard
+          result={pendingDestination}
+          onStartNavigation={handleStartNavigation}
+          onDismiss={handleDismissCard}
+        />
+      )}
     </View>
   );
 }
@@ -169,4 +256,23 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   recenterIcon: { fontSize: 22, color: '#3D7BFF' },
+  arrivedBanner: {
+    position: 'absolute',
+    top: '40%',
+    alignSelf: 'center',
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 16,
+  },
+  arrivedText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
 });

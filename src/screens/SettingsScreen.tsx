@@ -13,6 +13,7 @@ import { useAppDispatch, useAppSelector } from '../store';
 import {
   updatePrivacy,
   updateAvoidance,
+  updateRouteOptions,
   updateNotifications,
   setTravelMode,
   setUnits,
@@ -72,6 +73,25 @@ export default function SettingsScreen() {
             labels={['Imperial', 'Metric']}
             value={settings.units}
             onChange={(v) => dispatch(setUnits(v as Units))}
+          />
+        </Section>
+
+        {/* ── Route Options ────────────────────────────────── */}
+        <Section title="Route Options">
+          <SwitchRow
+            label="Avoid tolls"
+            value={settings.routeOptions?.avoidTolls ?? false}
+            onChange={(v) => dispatch(updateRouteOptions({ avoidTolls: v }))}
+          />
+          <SwitchRow
+            label="Avoid highways"
+            value={settings.routeOptions?.avoidHighways ?? false}
+            onChange={(v) => dispatch(updateRouteOptions({ avoidHighways: v }))}
+          />
+          <SwitchRow
+            label="Avoid ferries"
+            value={settings.routeOptions?.avoidFerries ?? false}
+            onChange={(v) => dispatch(updateRouteOptions({ avoidFerries: v }))}
           />
         </Section>
 

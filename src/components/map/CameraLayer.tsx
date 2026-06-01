@@ -30,6 +30,7 @@ export default function CameraLayer({ cameras, onCameraPress }: CameraLayerProps
           vendor: camera.vendor,
           status: camera.status,
           color: VENDOR_COLORS[camera.vendor] ?? VENDOR_COLORS.unknown,
+          radius: camera.avoidRadiusMeters,
         },
       })),
     }),
