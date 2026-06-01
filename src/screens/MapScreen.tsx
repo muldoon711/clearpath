@@ -3,8 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Text, Alert } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../store';
 import { setCenter, setIsFollowingUser } from '../store/slices/mapSlice';
 import {
-  calculateRoute,
-  setDestination,
+  setCurrentRoute,
   setPendingDestination,
   updateNavigation,
   setArrived,
@@ -21,13 +20,13 @@ import AndroidAutoService from '../services/AndroidAutoService';
 import DeflockSync from '../services/DeflockSync';
 import TTSService from '../services/TTSService';
 import { haversineDistance } from '../utils/geo';
-import type { SearchResult, LatLng } from '../types';
+import type { SearchResult, LatLng, Route } from '../types';
 
 const ARRIVAL_THRESHOLD_METERS = 25;
 
 export default function MapScreen() {
   const dispatch = useAppDispatch();
-  const { travelMode, syncIntervalMinutes, units, notifications } = useAppSelector(
+  const { syncIntervalMinutes, units, notifications } = useAppSelector(
     (s) => s.settings,
   );
   const {
@@ -168,17 +167,13 @@ export default function MapScreen() {
     [dispatch],
   );
 
-  const handleStartNavigation = useCallback(() => {
-    if (!pendingDestination) return;
-    const origin = LocationService.getInstance().getLastPosition();
-    if (!origin) {
-      Alert.alert('Location unavailable', 'Waiting for GPS fix…');
-      return;
-    }
-    dispatch(setPendingDestination(null));
-    dispatch(setDestination(pendingDestination.location));
-    dispatch(calculateRoute({ origin, destination: pendingDestination.location, travelMode }));
-  }, [dispatch, pendingDestination, travelMode]);
+  const handleStartNavigation = useCallback(
+    (selectedRoute: Route) => {
+      dispatch(setPendingDestination(null));
+      dispatch(setCurrentRoute(selectedRoute));
+    },
+    [dispatch],
+  );
 
   const handleDismissCard = useCallback(() => {
     dispatch(setPendingDestination(null));
@@ -229,6 +224,7 @@ export default function MapScreen() {
       {pendingDestination && (
         <PlaceDetailCard
           result={pendingDestination}
+          origin={LocationService.getInstance().getLastPosition() ?? { latitude: 0, longitude: 0 }}
           onStartNavigation={handleStartNavigation}
           onDismiss={handleDismissCard}
         />

@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapLibreGL, { type MapViewRef, type CameraRef } from '@maplibre/maplibre-react-native';
 import { useAppSelector, useAppDispatch } from '../../store';
@@ -30,6 +30,20 @@ export default function ClearpathMap({ onMapReady }: ClearpathMapProps) {
   );
   const { current: route } = useAppSelector((state) => state.route);
   const { visibleCameras } = useAppSelector((state) => state.cameras);
+
+  // Fit map to route bounds whenever a new route is loaded
+  useEffect(() => {
+    if (!route || !cameraRef.current) return;
+    const lons = route.geometry.map(([lon]) => lon);
+    const lats = route.geometry.map(([, lat]) => lat);
+    cameraRef.current.fitBounds(
+      [Math.max(...lons), Math.max(...lats)],
+      [Math.min(...lons), Math.min(...lats)],
+      [160, 60, 240, 60],
+      1000,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route?.id]);
 
   // Keep camera centered on user when following
   useEffect(() => {

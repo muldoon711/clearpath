@@ -68,6 +68,10 @@ const settingsSlice = createSlice({
       Object.assign(state.avoidance, action.payload);
     },
     updateRouteOptions(state, action: PayloadAction<Partial<RouteOptions>>) {
+      // Guard against missing field in old persisted state
+      if (!state.routeOptions) {
+        state.routeOptions = { avoidTolls: false, avoidHighways: false, avoidFerries: false };
+      }
       Object.assign(state.routeOptions, action.payload);
     },
     updateNotifications(state, action: PayloadAction<Partial<NotificationSettings>>) {

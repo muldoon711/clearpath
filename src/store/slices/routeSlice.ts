@@ -53,20 +53,26 @@ export const calculateRoute = createAsyncThunk<
   const avoidCameras = cameras.filter((c) => vendorsToAvoid.has(c.vendor) && c.status === 'active');
 
   const router = ValhallaRouter.getInstance();
-  const route = await router.route({
+  const routerOpts = {
     origin,
     destination,
     travelMode,
-    avoidCameras,
     avoidRadiusMeters: avoidance.avoidRadiusMeters,
     endpoint: state.settings.valhallaEndpoint,
     avoidTolls: routeOptions?.avoidTolls,
     avoidHighways: routeOptions?.avoidHighways,
     avoidFerries: routeOptions?.avoidFerries,
-  });
+  };
+
+  // Try with camera avoidance first; fall back to standard routing if Valhalla
+  // can't find a camera-free path (so navigation always starts).
+  let route = await router.route({ ...routerOpts, avoidCameras });
+  if (!route && avoidCameras.length > 0) {
+    route = await router.route({ ...routerOpts, avoidCameras: [] });
+  }
 
   if (!route) {
-    return rejectWithValue('No route found');
+    return rejectWithValue('No route found. Check your connection and try again.');
   }
   return route;
 });
@@ -98,6 +104,13 @@ const routeSlice = createSlice({
       state.status = 'arrived';
       state.navigation = null;
     },
+    setCurrentRoute(state, action: PayloadAction<Route>) {
+      state.current = action.payload;
+      state.status = 'active';
+      state.destination = action.payload.destination;
+      state.error = null;
+      state.navigation = null;
+    },
     setOffRoute(state, action: PayloadAction<boolean>) {
       if (state.navigation) {
         state.navigation.isOffRoute = action.payload;
@@ -125,6 +138,7 @@ const routeSlice = createSlice({
 export const {
   clearRoute,
   setPendingDestination,
+  setCurrentRoute,
   setDestination,
   updateNavigation,
   setArrived,

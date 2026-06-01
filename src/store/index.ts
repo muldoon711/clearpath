@@ -3,6 +3,7 @@ import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
 import {
   persistStore,
   persistReducer,
+  createMigrate,
   FLUSH,
   REHYDRATE,
   PAUSE,
@@ -25,11 +26,28 @@ const rootReducer = combineReducers({
   settings: settingsReducer,
 });
 
-// Only persist settings — map/route/camera state is ephemeral
+// Bump version when the settings shape changes — migrations backfill missing fields
+// so existing installs don't crash on rehydration.
+const migrations = {
+  1: (state: any) => ({
+    ...state,
+    settings: {
+      ...state?.settings,
+      routeOptions: state?.settings?.routeOptions ?? {
+        avoidTolls: false,
+        avoidHighways: false,
+        avoidFerries: false,
+      },
+    },
+  }),
+};
+
 const persistConfig = {
   key: 'clearpath_root',
+  version: 1,
   storage: AsyncStorage,
   whitelist: ['settings'],
+  migrate: createMigrate(migrations as any, { debug: false }),
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
