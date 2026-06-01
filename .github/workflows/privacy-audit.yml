@@ -14,10 +14,10 @@ jobs:
     name: Static Privacy Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
 
@@ -40,10 +40,16 @@ jobs:
           done
           echo "No banned analytics packages detected."
 
-      - name: Verify MapLibre telemetry is disabled
+      - name: Verify MapLibre has no telemetry (v10+ removed it entirely)
         run: |
-          if ! grep -r "setTelemetryEnabled(false)" src/ App.tsx 2>/dev/null | grep -q "false"; then
-            echo "WARNING: MapLibre.setTelemetryEnabled(false) not found — telemetry may be on."
-            exit 1
-          fi
-          echo "MapLibre telemetry is disabled."
+          # maplibre-react-native v10+ permanently removed all telemetry.
+          # Read the declared version constraint from package.json (no npm install needed).
+          node -e "
+            const v = require('./package.json').dependencies['@maplibre/maplibre-react-native'] || '';
+            const major = parseInt(v.replace(/[^0-9]/,''), 10);
+            if (!major || major < 10) {
+              console.error('FAIL: maplibre-react-native \"' + v + '\" is older than v10 — telemetry may be present.');
+              process.exit(1);
+            }
+            console.log('OK: maplibre-react-native ' + v + ' (v10+) has no telemetry by design.');
+          "

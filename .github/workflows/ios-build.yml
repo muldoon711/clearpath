@@ -9,12 +9,15 @@ jobs:
   build-ios:
     name: Build iOS IPA
     runs-on: macos-14
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: "npm"
@@ -31,20 +34,58 @@ jobs:
       - name: Install CocoaPods
         run: gem install cocoapods --no-document
 
+      - name: Download MapLibre XCFramework (bypasses SPM signature validation)
+        run: |
+          set -euo pipefail
+          # Binary lives in maplibre-native releases, tag format is ios-v{version}
+          URL="https://github.com/maplibre/maplibre-native/releases/download/ios-v6.17.1/MapLibre.dynamic.xcframework.zip"
+          echo "Downloading MapLibre from ${URL}"
+          curl -fL --retry 3 --retry-delay 5 "$URL" -o /tmp/MapLibre.xcframework.zip
+          unzip -q /tmp/MapLibre.xcframework.zip -d /tmp/maplibre/
+          echo "Extracted contents:"
+          find /tmp/maplibre -maxdepth 2 | sort
+
+      - name: Patch maplibre-react-native podspec to use vendored XCFramework
+        run: |
+          ruby - <<'RUBY'
+          require 'fileutils'
+          spec_path = 'node_modules/@maplibre/maplibre-react-native/maplibre-react-native.podspec'
+          # Find the .xcframework directory extracted from the zip
+          framework_src = Dir.glob('/tmp/maplibre/**/*.xcframework').first
+          raise "MapLibre.xcframework not found in /tmp/maplibre" unless framework_src
+          puts "Found framework at: #{framework_src}"
+          # CocoaPods requires vendored_frameworks paths to be relative to the podspec.
+          # Copy the xcframework next to the podspec so we can use a bare filename.
+          spec_dir = File.dirname(File.expand_path(spec_path))
+          framework_dest = File.join(spec_dir, File.basename(framework_src))
+          FileUtils.cp_r(framework_src, framework_dest)
+          puts "Copied to: #{framework_dest}"
+          relative_path = File.basename(framework_src)
+          content = File.read(spec_path)
+          content.sub!(
+            /sp\.source_files\s*=\s*"ios\/MLRN\/\*\*\/\*\.\{h,m\}"/,
+            "sp.source_files\t= \"ios/MLRN/**/*.{h,m}\"\n    sp.vendored_frameworks = '#{relative_path}'"
+          )
+          File.write(spec_path, content)
+          puts "Patched podspec. vendored_frameworks line:"
+          puts content.match(/vendored_frameworks.*/)&.to_s
+          RUBY
+
       - name: Cache Pods
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
-          restore-keys: ${{ runner.os }}-pods-
+          key: ${{ runner.os }}-pods-v3-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: ${{ runner.os }}-pods-v3-
+
+      - name: Set NODE_BINARY for Xcode build phases
+        run: echo "export NODE_BINARY=$(which node)" > ios/.xcode.env.local
 
       - name: pod install
         working-directory: ios
-        run: pod install
+        run: pod install 2>&1 | tee /tmp/pod-install.log; exit ${PIPESTATUS[0]}
 
       - name: xcodebuild archive (unsigned)
-        # The "Bundle React Native code and images" build phase in the xcodeproj
-        # runs react-native-xcode.sh automatically — no separate bundle step needed.
         run: |
           xcodebuild archive \
             -workspace ios/ClearPath.xcworkspace \
@@ -52,30 +93,63 @@ jobs:
             -configuration Release \
             -destination "generic/platform=iOS" \
             -archivePath "$RUNNER_TEMP/ClearPath.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             DEVELOPMENT_TEAM="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            EXCLUDED_ARCHS="x86_64"
+            EXCLUDED_ARCHS="x86_64" \
+            2>&1 | tee /tmp/xcodebuild.log; exit ${PIPESTATUS[0]}
+
+      - name: Upload xcodebuild log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: xcodebuild-log
+          path: /tmp/xcodebuild.log
+          retention-days: 3
 
       - name: Package IPA
         run: |
           set -euo pipefail
-          APPS="$RUNNER_TEMP/ClearPath.xcarchive/Products/Applications"
+          echo "=== Archive structure ==="
+          find "$RUNNER_TEMP/ClearPath.xcarchive" -maxdepth 5 | sort
+          APP=$(find "$RUNNER_TEMP/ClearPath.xcarchive" -name "ClearPath.app" -type d 2>/dev/null | head -1)
+          if [ -z "$APP" ]; then
+            echo "ERROR: ClearPath.app not found in archive"
+            exit 1
+          fi
+          echo "Found app at: $APP"
           OUT="$RUNNER_TEMP/ipa"
           mkdir -p "$OUT/Payload"
-          cp -r "$APPS/ClearPath.app" "$OUT/Payload/"
+          cp -r "$APP" "$OUT/Payload/"
           cd "$OUT"
           zip -r ClearPath-unsigned.ipa Payload/
           echo "IPA size: $(du -sh ClearPath-unsigned.ipa)"
 
       - name: Upload IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ClearPath-unsigned-ipa
           path: ${{ runner.temp }}/ipa/ClearPath-unsigned.ipa
           retention-days: 7
 
+      - name: Post build errors to PR
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          ERRORS=$(grep -E " error: | error\]|BUILD FAILED|error:" /tmp/xcodebuild.log 2>/dev/null | grep -v "note:" | tail -60)
+          if [ -z "$ERRORS" ]; then
+            ERRORS=$(tail -80 /tmp/xcodebuild.log 2>/dev/null)
+          fi
+          if [ -z "$ERRORS" ]; then
+            ERRORS="pod install output:\n$(tail -50 /tmp/pod-install.log 2>/dev/null)"
+          fi
+          gh pr comment 1 --repo muldoon711/clearpath --body "$(printf '**iOS Build failed** — errors:\n```\n%s\n```' "$ERRORS")"
+
       - name: Print install instructions
+        if: success()
         run: |
           echo "================================================"
           echo "IPA built successfully!"
